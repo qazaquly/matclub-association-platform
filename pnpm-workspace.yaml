@@ -1,0 +1,16 @@
+allowBuilds:
+  '@embedded-postgres/darwin-arm64': true
+  '@embedded-postgres/windows-x64': true
+  '@prisma/engines': true
+  esbuild: true
+  prisma: true
+  sharp: true
+  workerd: true
+onlyBuiltDependencies:
+  - "@embedded-postgres/darwin-arm64"
+  - "@embedded-postgres/windows-x64"
+  - "@prisma/engines"
+  - "esbuild"
+  - "prisma"
+  - "sharp"
+  - "workerd"

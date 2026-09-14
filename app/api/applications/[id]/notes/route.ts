@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { ensureDatabase } from "@/db/bootstrap";
-import { getRawDb } from "@/db";
+import { getDb } from "@/db";
 import { authenticateRequest } from "@/lib/auth";
 import { canAccessBranch, canReviewApplications, isFullAccess } from "@/lib/authorization";
 import { assertSameOrigin, clientIp } from "@/lib/security";
@@ -20,15 +20,22 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     return Response.redirect(new URL(`/dashboard/applications/${id}?error=note`, request.url), 303);
   }
   await ensureDatabase();
-  const database = getRawDb();
-  const application = await database.prepare("SELECT person_id AS personId, branch_id AS branchId FROM membership_applications WHERE id = ? AND archived_at IS NULL").bind(id).first<{ personId: string; branchId: string }>();
+  const database = getDb();
+  const application = await database.membershipApplication.findFirst({ where: { id, archivedAt: null }, select: { personId: true, branchId: true } });
   if (!application || !canAccessBranch(user, application.branchId)) return new Response("Forbidden", { status: 403 });
-  const now = new Date().toISOString();
-  await database.batch([
-    database.prepare("INSERT INTO internal_notes (id, person_id, application_id, branch_id, author_user_id, note, visibility, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
-      .bind(crypto.randomUUID(), application.personId, id, application.branchId, user.id, parsed.data.note, parsed.data.visibility, now),
-    database.prepare("INSERT INTO audit_logs (id, actor_user_id, action_type, target_entity, target_entity_id, new_value, ip_address, session_id, created_at) VALUES (?, ?, 'internal_note.created', 'membership_application', ?, ?, ?, ?, ?)")
-      .bind(crypto.randomUUID(), user.id, id, JSON.stringify({ visibility: parsed.data.visibility }), clientIp(request), user.sessionId, now),
+  const now = new Date();
+  await database.$transaction([
+    database.internalNote.create({ data: {
+      id: crypto.randomUUID(), personId: application.personId, applicationId: id,
+      branchId: application.branchId, authorUserId: user.id, note: parsed.data.note,
+      visibility: parsed.data.visibility, createdAt: now,
+    } }),
+    database.auditLog.create({ data: {
+      id: crypto.randomUUID(), actorUserId: user.id, actionType: "internal_note.created",
+      targetEntity: "membership_application", targetEntityId: id,
+      newValue: JSON.stringify({ visibility: parsed.data.visibility }), ipAddress: clientIp(request),
+      sessionId: user.sessionId, createdAt: now,
+    } }),
   ]);
   return Response.redirect(new URL(`/dashboard/applications/${id}?success=note`, request.url), 303);
 }

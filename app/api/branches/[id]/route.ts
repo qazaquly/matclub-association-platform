@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { ensureDatabase } from "@/db/bootstrap";
-import { getRawDb } from "@/db";
+import { getDb } from "@/db";
 import { authenticateRequest } from "@/lib/auth";
 import { isFullAccess } from "@/lib/authorization";
 import { assertSameOrigin, clientIp } from "@/lib/security";
@@ -19,14 +19,17 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   const parsed = branchSchema.safeParse(Object.fromEntries((await request.formData()).entries()));
   if (!parsed.success) return Response.redirect(new URL("/dashboard/branches?error=validation", request.url), 303);
   await ensureDatabase();
-  const database = getRawDb();
-  const current = await database.prepare("SELECT name, status FROM branches WHERE id = ? AND archived_at IS NULL").bind(id).first<{ name: string; status: string }>();
+  const database = getDb();
+  const current = await database.branch.findFirst({ where: { id, archivedAt: null }, select: { name: true, status: true } });
   if (!current) return new Response("Not found", { status: 404 });
-  const now = new Date().toISOString();
-  await database.batch([
-    database.prepare("UPDATE branches SET name = ?, status = ?, updated_at = ? WHERE id = ?").bind(parsed.data.name, parsed.data.status, now, id),
-    database.prepare("INSERT INTO audit_logs (id, actor_user_id, action_type, target_entity, target_entity_id, previous_value, new_value, reason, ip_address, session_id, created_at) VALUES (?, ?, 'branch.updated', 'branch', ?, ?, ?, ?, ?, ?, ?)")
-      .bind(crypto.randomUUID(), actor.id, id, JSON.stringify(current), JSON.stringify({ name: parsed.data.name, status: parsed.data.status }), parsed.data.reason, clientIp(request), actor.sessionId, now),
+  const now = new Date();
+  await database.$transaction([
+    database.branch.update({ where: { id }, data: { name: parsed.data.name, status: parsed.data.status, updatedAt: now } }),
+    database.auditLog.create({ data: {
+      id: crypto.randomUUID(), actorUserId: actor.id, actionType: "branch.updated", targetEntity: "branch",
+      targetEntityId: id, previousValue: JSON.stringify(current), newValue: JSON.stringify({ name: parsed.data.name, status: parsed.data.status }),
+      reason: parsed.data.reason, ipAddress: clientIp(request), sessionId: actor.sessionId, createdAt: now,
+    } }),
   ]);
   return Response.redirect(new URL("/dashboard/branches?success=updated", request.url), 303);
 }

@@ -1,6 +1,10 @@
-import Link from "next/link";
+/* eslint-disable @next/next/no-html-link-for-pages -- Vinext beta client routing breaks normal public left-click navigation. */
 import { ArrowRight, BookOpen, Building2, CalendarDays, Network, ShieldCheck, Sparkles, Users } from "lucide-react";
 import { PublicShell } from "./components/PublicShell";
+import { getPublicContentValues } from "@/db/queries";
+import { getNearestUpcomingEvent } from "@/db/events";
+import { eventLocation, eventStatusLabel } from "@/lib/events";
+import { formatDate } from "@/lib/format";
 
 const priorities = [
   {
@@ -19,29 +23,30 @@ const priorities = [
     icon: ShieldCheck,
     number: "03",
     title: "Институционалдық жады",
-    text: "Әр мүшенің бір профилі және қауымдастықтағы қызметінің толық, үздіксіз тарихы.",
+    text: "Әр мүшенің бір профилі және бірлестіктегі қызметінің толық, үздіксіз тарихы.",
   },
 ];
 
-export default function Home() {
+export const dynamic = "force-dynamic";
+
+export default async function Home() {
+  const [content, nearestEvent] = await Promise.all([getPublicContentValues(), getNearestUpcomingEvent()]);
+  const [sloganLead, ...sloganRest] = content["home.hero.slogan"].split(". ");
   return (
-    <PublicShell>
+    <PublicShell content={content}>
       <main>
         <section className="hero">
           <div className="hero-grid" aria-hidden="true" />
           <div className="container hero-inner">
             <div className="hero-copy">
-              <p className="eyebrow"><Sparkles size={15} /> Қазақстанның кәсіби математикалық қауымдастығы</p>
-              <h1>Математика — ортақ тіл.<br /><em>Қауымдастық — ортақ күш.</em></h1>
-              <p className="hero-lead">
-                Ғалымдарды, оқытушыларды және математикалық ойлауды дамытатын мамандарды
-                бір институционалдық кеңістікке біріктіреміз.
-              </p>
+              <p className="eyebrow"><Sparkles size={15} /> {content["home.hero.headline"]}</p>
+              <h1>{sloganLead}{sloganRest.length > 0 ? "." : ""}{sloganRest.length > 0 && <><br /><em>{sloganRest.join(". ")}</em></>}</h1>
+              <p className="hero-lead">{content["home.hero.intro"]}</p>
               <div className="hero-actions">
-                <Link className="button button-primary" href="/membership">
-                  Бірлестікке мүше болу <ArrowRight size={18} />
-                </Link>
-                <Link className="button button-ghost" href="/about">Қауымдастық туралы</Link>
+                <a className="button button-primary" href={content["home.hero.primaryDestination"]}>
+                  {content["home.hero.primaryLabel"]} <ArrowRight size={18} />
+                </a>
+                <a className="button button-ghost" href={content["home.hero.secondaryDestination"]}>{content["home.hero.secondaryLabel"]}</a>
               </div>
             </div>
             <div className="hero-mark" aria-hidden="true">
@@ -62,12 +67,9 @@ export default function Home() {
           <div className="section-heading split-heading">
             <div>
               <p className="eyebrow dark">Біздің негіз</p>
-              <h2>Математиктерді бүгін біріктіріп,<br />ертеңге мұра қалдырамыз.</h2>
+              <h2>{content["home.about.heading"]}</h2>
             </div>
-            <p>
-              Қауымдастық кәсіби байланысты күшейтеді, өңірлік бастамаларды қолдайды және
-              математикалық қоғамның ұзақ мерзімді институционалдық жадын қалыптастырады.
-            </p>
+            <p>{content["home.about.intro"]}</p>
           </div>
           <div className="priority-grid">
             {priorities.map(({ icon: Icon, number, title, text }) => (
@@ -83,14 +85,11 @@ export default function Home() {
           <div className="container structure-grid">
             <div>
               <p className="eyebrow">Құрылым</p>
-              <h2>Ортақ мақсат.<br /><em>Айқын жауапкершілік.</em></h2>
-              <p className="structure-copy">
-                Президент, вице-президенттер, кәсіби департаменттер және өңірлік филиалдар
-                бір басқару архитектурасында жұмыс істейді.
-              </p>
-              <Link className="text-link light" href="/structure">Ұйымдық құрылымды көру <ArrowRight size={17} /></Link>
+              <h2>{content["home.structure.heading"]}</h2>
+              <p className="structure-copy">{content["home.structure.intro"]}</p>
+              <a className="text-link light" href={content["home.structure.ctaDestination"]}>{content["home.structure.ctaLabel"]} <ArrowRight size={17} /></a>
             </div>
-            <div className="org-map" aria-label="Қауымдастық құрылымы">
+            <div className="org-map" aria-label="Бірлестік құрылымы">
               <div className="org-node primary"><span>01</span><strong>Президент</strong><small>Стратегиялық басқару</small></div>
               <div className="org-connector" />
               <div className="org-row">
@@ -104,33 +103,35 @@ export default function Home() {
 
         <section className="section container">
           <div className="section-heading inline-heading">
-            <div><p className="eyebrow dark">Қызмет бағыттары</p><h2>Қауымдастық күн тәртібі</h2></div>
-            <Link className="text-link" href="/projects">Барлық жобалар <ArrowRight size={17} /></Link>
+            <div><p className="eyebrow dark">Қызмет бағыттары</p><h2>{content["home.projects.heading"]}</h2></div>
+            <a className="text-link" href={content["home.projects.ctaDestination"]}>{content["home.projects.ctaLabel"]} <ArrowRight size={17} /></a>
           </div>
           <div className="agenda-grid">
-            <Link href="/events" className="agenda-card featured">
+            <a href="/events" className="agenda-card featured">
               <CalendarDays size={26} /><span>Кәсіби кездесулер</span>
               <h3>Өңірлерді байланыстыратын ашық диалог алаңы</h3><ArrowRight size={20} />
-            </Link>
-            <Link href="/publications" className="agenda-card">
+            </a>
+            <a href="/publications" className="agenda-card">
               <BookOpen size={26} /><span>Әдістемелік қор</span>
               <h3>Математикалық білім мен тәжірибе материалдары</h3><ArrowRight size={20} />
-            </Link>
-            <Link href="/branches" className="agenda-card">
+            </a>
+            <a href="/branches" className="agenda-card">
               <Building2 size={26} /><span>Өңірлік жұмыс</span>
               <h3>Филиалдардың кәсіби бастамалары мен байланысы</h3><ArrowRight size={20} />
-            </Link>
+            </a>
           </div>
         </section>
 
+        {nearestEvent && <section className="container nearest-event"><div><p className="eyebrow">Жақын іс-шара</p><h2>{nearestEvent.title}</h2><p>{nearestEvent.summary}</p></div><div className="nearest-event-meta"><span><CalendarDays size={17} /> {formatDate(nearestEvent.startAt.toISOString(), true)}</span><span>{eventLocation(nearestEvent)}</span><span>{eventStatusLabel(nearestEvent.status)}</span><a className="button button-white" href={`/events/${nearestEvent.slug}`}>Толық ақпарат <ArrowRight size={17} /></a></div></section>}
+
         <section className="container membership-callout">
           <div>
-            <p className="eyebrow">Қауымдастыққа қосылыңыз</p>
-            <h2>Кәсіби ортаға үлес қосатын кез келді.</h2>
+            <p className="eyebrow">Бірлестікке қосылыңыз</p>
+            <h2>{content["home.membership.heading"]}</h2>
           </div>
           <div>
-            <p>Өтінішті онлайн жіберіңіз. Ол сіздің өңіріңіздегі филиалға автоматты түрде бағытталады.</p>
-            <Link className="button button-white" href="/membership">Өтініш беру <ArrowRight size={18} /></Link>
+            <p>{content["home.membership.intro"]}</p>
+            <a className="button button-white" href={content["home.membership.ctaDestination"]}>{content["home.membership.ctaLabel"]} <ArrowRight size={18} /></a>
           </div>
         </section>
       </main>

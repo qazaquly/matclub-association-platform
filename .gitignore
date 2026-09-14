@@ -2,6 +2,7 @@
 
 # dependencies
 /node_modules
+/.pnpm-store/
 /.pnp
 .pnp.*
 .yarn/*
@@ -39,6 +40,8 @@ yarn-error.log*
 # private application data and local database state
 /private-uploads/
 /uploads/
+/.postgres/
+/generated/
 *.sqlite
 *.sqlite-shm
 *.sqlite-wal

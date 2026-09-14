@@ -1,126 +1,131 @@
-# ҚМРҚ digital platform — Phase 1
+# Республикалық математиктер бірлестігі — Phase 1 + Phase 2 management platform
 
-Phase 1 of the digital institutional platform for the Republican Association of Mathematicians of Kazakhstan.
+The production platform contains the completed Phase 1 membership foundation and the agreed Phase 2 management platform: dynamic public content, Events and participation, internal Projects, a unified Branch workspace, scoped reports, management indicators, and a permanent internal institutional document registry. Phase 3 is intentionally deferred until enough real operational data has accumulated. Competition management remains out of scope.
 
-This is an Association-management platform, **not an olympiad platform**. It intentionally contains no competition registration, testing, scoring, protocols, certificates, diplomas, or competition operations.
-
-## What Phase 1 includes
-
-- Kazakh-first public website with the requested information architecture
-- public membership application with terms acceptance and QR URL
-- automatic regional-branch assignment
-- private supporting-document storage
-- branch-scoped review with reject, reserve, and approve decisions
-- one permanent person profile with separate membership status and system role
-- Level A–D server-side authorization
-- member self-service limited to explicitly editable fields
-- central member, branch, and role administration
-- append-only membership history and database-enforced immutable audit log
-- fictional Kazakh development data for all requested test roles
+Slogan: “Математика — ортақ тіл. Бірлестік — ортақ күш.”
 
 ## Stack
 
-- Vinext `1.0.0-beta.2`, using the Next.js App Router programming model
-- React `19.2.6` and TypeScript `5.9.3`
-- Tailwind CSS `4.2.1` plus a project-specific design system
-- Cloudflare D1 and Drizzle ORM `0.45.2`
-- private Cloudflare R2 binding for uploaded documents
-- PBKDF2-SHA256 password hashing and signed, HttpOnly, SameSite session cookies
-- Zod validation, server route authorization, origin checks, rate limiting
-
-The brief described PostgreSQL and Prisma as the preferred stack. This implementation uses the Sites capability runtime's relational D1/R2 bindings and Drizzle while preserving the same normalized domain boundaries. The data and authorization modules are isolated so a PostgreSQL/Prisma adapter can replace the persistence layer without redesigning membership workflows or UI routes.
+- Vinext, React 19, TypeScript, and Tailwind CSS
+- PostgreSQL
+- Prisma ORM 7 with the PostgreSQL driver adapter
+- Zod validation and server-enforced RBAC
+- provider-neutral private object storage contract, with a PostgreSQL-backed Phase 1 provider
+- a separate provider-neutral public-media contract for CMS images
+- automatic 60-day cleanup for archived news, never-published archived CMS drafts, and unused archived public media, while membership and audit history remain protected
+- permanent Event records with audited lifecycle state and structured results
+- explicit Event-to-News announcement/result relations; generated News always starts as a draft
+- internal full-member registration with capacity enforcement and pre-start self-cancellation
+- scoped participant/reception/attendance/seating capabilities and immutable participation history
+- automatic Event participation history on the existing PersonProfile only after attendance is confirmed
+- scoped internal Project lifecycle, stages, team roles, results, and private documents
+- centrally assigned Projects can target every Branch at once or one selected Branch
+- batch Project-stage entry: prepare up to 30 stages in the browser and save them in one operation
+- automatic completed Project participation in the same PersonProfile activity history
+- unified branch workspace with current operations and date-filtered branch reporting
+- scoped management reports for members, applications, Events, and Projects with Excel/PDF export
+- date-filtered management indicators with period comparison, attendance rates, activity trends, branch comparison, and attention signals
+- permanent institutional document registry with number/date/type metadata, national or branch scope, responsible structure, visibility levels, immutable file versions, archive/restore, and audit history
+- combined people search by name/keyword, exact age bounds, workplace, position, locality, branch, membership state, and professional category
 
 ## Local setup
 
-Requirements: Node.js `>=22.13.0` and pnpm `11.16.0`.
-
-```bash
-pnpm install
-cp .env.example .env
-pnpm dev
-```
-
-On Windows PowerShell, copy the environment template with:
+Requirements: Node.js 22.13+ and PostgreSQL. A development-only embedded PostgreSQL runner is included for local verification.
 
 ```powershell
 Copy-Item .env.example .env
+pnpm db:local
 ```
 
-Replace `AUTH_SECRET` in `.env` before using authenticated routes. Open `http://localhost:3000`.
+Replace every placeholder in the ignored `.env` file with the local development values before starting Prisma or the application.
 
-The local runtime creates project-local D1 and R2 development state under `.wrangler/`; it is ignored by Git. Schema creation and fictional seed data are idempotently applied on first database access.
+Leave PostgreSQL running, then use a second terminal:
 
-## Development accounts
+```powershell
+pnpm db:migrate
+pnpm db:seed
+pnpm dev
+```
 
-All sample identities are fictional. The shared local-only password is `RamkDemo2026!`.
+The default embedded development URL is:
 
-| Scenario | Email | Access |
-|---|---|---|
-| President | `president@ramk.test` | A — full |
-| Vice President 1 | `vp1@ramk.test` | A — full |
-| Vice President 2 | `vp2@ramk.test` | B — department |
-| Department head | `department@ramk.test` | B — department |
-| Almaty branch director | `branch@ramk.test` | C — own branch |
-| Ordinary member | `member@ramk.test` | D — own profile |
-| Applicant | `applicant@ramk.test` | applicant fixture |
-| Reserve applicant | `reserve@ramk.test` | reserve fixture |
+The included runner listens on `127.0.0.1:55432` and uses the persistent `rmb_phase_one` development database.
 
-These credentials are for local development only. Remove or replace every seeded account before real deployment. A local ignored copy is also available in `LOCAL_TEST_ACCOUNTS.md`.
+Production must supply its own `DATABASE_URL`, optional migration-only `DIRECT_URL`, and strong `AUTH_SECRET`.
 
-## Validation
+## Verification commands
 
-```bash
+```powershell
+pnpm db:migrate
 pnpm typecheck
-pnpm test
 pnpm lint
+pnpm build
+pnpm test
 ```
 
-`pnpm test` performs a production build, verifies the Kazakh public render, applies the migration to an in-memory SQLite database, proves that audit updates/deletes are rejected, and checks sensitive routes for server-side authorization.
+`pnpm test` expects the migrations and fictional seed to have been applied to `DATABASE_URL`, and validates the production worker output in `dist/`.
 
-After changing `db/schema.ts`, generate a migration with:
+## Fictional test accounts
 
-```bash
-pnpm db:generate
+All local accounts are explicit test fixtures and do not represent real leadership or members. Shared password: `PhaseOneDemo2026!`.
+
+| Access scenario | Email |
+|---|---|
+| A — president role | `president@example.test` |
+| B — first vice-president, mathematics/content/professional role | `vp1@example.test` |
+| A — second vice-president, organization/institutional-development role | `vp2@example.test` |
+| B — department-head role | `department@example.test` |
+| C — Almaty branch-director role | `branch@example.test` |
+| D — member role | `member@example.test` |
+| Applicant fixture | `applicant@example.test` |
+| Reserve fixture | `reserve@example.test` |
+
+## Persistence and storage
+
+`prisma/schema.prisma` is the canonical relational model. Versioned SQL lives in `prisma/migrations/`; `prisma migrate deploy` applies it. Phase 1 includes an administrator-managed organizational hierarchy on top of explicit department scopes and person-to-department assignments, while `private_objects` remains the storage provider's internal byte store.
+
+`uploaded_documents` continues to hold document metadata, checksums, ownership, visibility, and random object keys. Application routes depend only on `PrivateObjectStorage`. The current provider stores private bytes in PostgreSQL; a later S3-compatible provider can implement the same interface without changing membership routes or authorization.
+
+The audit table is append-only at the PostgreSQL layer. Triggers reject `UPDATE`, `DELETE`, and `TRUNCATE`; application mutations insert the audit row in the same Prisma transaction as the business change.
+
+## One-time production administrator bootstrap
+
+President and VP2 production accounts are created only by the explicit `pnpm run bootstrap:production-admin` command. Supply the production database connection and account fields through the current shell environment or another secure secret-injection mechanism, never a tracked file:
+
+```powershell
+$env:ENVIRONMENT = "production"
+$env:DIRECT_URL = "<production direct PostgreSQL URL>"
+$env:BOOTSTRAP_ADMIN_ROLE = "president" # or vice_president_2
+$env:BOOTSTRAP_ADMIN_EMAIL = "<real email address>"
+$env:BOOTSTRAP_ADMIN_PASSWORD = "<new strong password>"
+$env:BOOTSTRAP_ADMIN_FULL_NAME = "<full name>"
+$env:BOOTSTRAP_ADMIN_REGION_CODE = "<region code>"
+$env:BOOTSTRAP_ADMIN_CITY_DISTRICT = "<city or district>"
+$env:BOOTSTRAP_ADMIN_PHONE = "<phone>"
+pnpm.cmd run bootstrap:production-admin
 ```
 
-Inspect generated SQL before committing. Custom append-only audit triggers must remain present in the migration.
+Run it once for `president` and once for `vice_president_2`, using different real email addresses. The command hashes the password, creates the user/profile/role relationship in one transaction, writes an immutable audit entry, rejects `.example.test` and duplicate emails, and never prints the password. Clear the temporary shell variables after each run. Do not put these values in `.env.example`, seed files, Worker plain-text variables, or source control.
 
-## Project structure
+## Important boundaries
 
-```text
-app/                   public pages, protected dashboard, server API routes
-app/components/        shared public and internal interface components
-db/schema.ts           normalized relational schema
-db/bootstrap.ts        idempotent local schema + fictional seed data
-db/queries.ts          scoped reads and append-only audit helper
-drizzle/               versioned database migrations
-lib/auth.ts            request/session identity loading
-lib/authorization.ts   Level A–D server authorization rules
-lib/security.ts        password, session, CSRF/origin, checksum helpers
-lib/i18n.ts            Kazakh-first localization contract, RU/EN-ready
-worker/                 application worker and security response headers
-docs/                   architecture, RBAC, security, and roadmap
-tests/                  build, migration, audit, and authorization checks
-```
+- Authentication never substitutes for authorization; every sensitive route checks the actor and stored target scope.
+- Branch staff can read and mutate only members, applications, documents, statistics, and branch information assigned to their branch.
+- Branch directors can create and submit drafts only for their own branch; a separately assignable branch-event-manager role grants only that Event scope and no membership administration.
+- Only an actor with `events.publish` can publish, postpone, cancel, complete, archive, or restore an Event; President and VP2 receive it initially.
+- The first vice-president receives the nationwide professional-field projection required for mathematics, content, and professional-development work.
+- Event participant lists, participant changes, attendance, and seating use separate capabilities and remain constrained to the Event's stored branch scope; public pages never return participant names.
+- Project management uses separate global, branch, department, participant, stage, result, and document capabilities; a branch Project coordinator receives only Project access for the assigned branch.
+- Internal Project data never becomes public merely because it is linked to a public CMS Project record.
+- Department heads and staff see only members explicitly assigned to the department IDs they manage.
+- The second vice-president has the same full global operational access boundary as the president.
+- Members can edit only the explicit self-service profile allowlist.
+- Membership intake creates one user, one linked profile, and one application; approval adds the member role to that same user.
+- Applications is the operational queue for newly registered profiles and applicants; Members contains approved members only.
+- Rejected applicants disappear from active people lists, member reports, branch profile panels, and direct administrative profile pages; their application remains available under rejected applications. President and VP2 can return an accidentally rejected application to review, restoring the same saved profile as an applicant while retaining the original rejection and correction reason in immutable history and audit records.
+- President and VP2 can permanently erase any other account, regardless of its current membership status, after typing an explicit confirmation and reason. The account is disabled, identifying profile/application data is anonymized, drafts and private document metadata/bytes are removed, active access is revoked, and operational Event/Project history is retained only through a non-identifying participant tombstone. Self-erasure remains blocked and a minimal status/audit trail is preserved.
+- Private documents have no public URL and are served with private/no-store headers.
+- Audit records and membership-status history have no update or delete path.
+- D1, R2, and Drizzle are not application dependencies.
 
-## Key invariants
-
-1. One person has one permanent `person_profiles` record.
-2. `membership_status` and assigned system roles are independent.
-3. Every decision appends `membership_status_history`; history is never overwritten.
-4. Branch access is filtered by server-side branch scope.
-5. Department access exposes only the professional fields needed for its mandate.
-6. Members can update only the allowlisted fields in `/api/profile`.
-7. Private document bytes live in R2 and are returned only by an authenticated, authorized download route.
-8. Audit rows cannot be updated or deleted: SQLite triggers reject both operations.
-
-## Further documentation
-
-- [Architecture](docs/ARCHITECTURE.md)
-- [Roles and permissions](docs/ROLES_AND_PERMISSIONS.md)
-- [Security model](docs/SECURITY.md)
-- [Phase 2 and Phase 3 roadmap](docs/ROADMAP.md)
-
-## Private repository readiness
-
-The repository ignores environment files, secrets, local database state, private uploads, runtime state, local test credential notes, output artifacts, and dependencies. `.env.example` contains placeholders only. Do not commit real member data or private documents.
+See [architecture](docs/ARCHITECTURE.md), [roles](docs/ROLES_AND_PERMISSIONS.md), and [security](docs/SECURITY.md) for the Phase 1 details.

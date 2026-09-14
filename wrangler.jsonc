@@ -1,0 +1,42 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "matclub",
+	"compatibility_date": "2026-05-22",
+	"compatibility_flags": [
+		"nodejs_compat"
+	],
+	"main": "./worker/index.ts",
+	"assets": {
+		"directory": "dist/client",
+		"not_found_handling": "none",
+		"binding": "ASSETS"
+	},
+	"cache": {
+		"enabled": true
+	},
+	"triggers": {
+		"crons": ["15 21 * * *"]
+	},
+	"observability": {
+		"enabled": true,
+		"logs": {
+			"enabled": true,
+			"head_sampling_rate": 1
+		}
+	},
+	"kv_namespaces": [
+  {
+    "binding": "VINEXT_KV_CACHE",
+    "id": "e63ec1ec50364b7da8c74d75726b0498"
+  }
+],
+"secrets": {
+  "required": ["DATABASE_URL", "AUTH_SECRET", "RESEND_API_KEY"]
+},
+"vars": {
+  "ENVIRONMENT": "production",
+  "EMAIL_PROVIDER": "resend",
+  "EMAIL_FROM": "Республикалық математиктер бірлестігі <no-reply@matclub.kz>",
+  "APP_BASE_URL": "https://matclub.kz"
+}
+}

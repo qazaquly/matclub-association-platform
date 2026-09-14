@@ -1,6 +1,6 @@
-import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { PublicShell } from "./PublicShell";
+import { getPublicContentValues } from "@/db/queries";
 
 export interface ContentBlock {
   kicker?: string;
@@ -8,7 +8,7 @@ export interface ContentBlock {
   text: string;
 }
 
-export function ContentPage({
+export async function ContentPage({
   eyebrow,
   title,
   lead,
@@ -21,8 +21,9 @@ export function ContentPage({
   blocks: ContentBlock[];
   cta?: boolean;
 }) {
+  const content = await getPublicContentValues();
   return (
-    <PublicShell>
+    <PublicShell content={content}>
       <main>
         <section className="page-hero">
           <div className="container narrow"><p className="eyebrow">{eyebrow}</p><h1>{title}</h1><p>{lead}</p></div>
@@ -37,7 +38,7 @@ export function ContentPage({
             ))}
           </div>
         </section>
-        {cta && <section className="container compact-cta"><div><span>Қауымдастық мүшесі болыңыз</span><h2>Ортақ кәсіби кеңістікке қосылыңыз.</h2></div><Link className="button button-primary" href="/membership">Өтініш беру <ArrowRight size={18} /></Link></section>}
+        {cta && <section className="container compact-cta"><div><span>{content["common.cta.eyebrow"]}</span><h2>{content["common.cta.heading"]}</h2></div><a className="button button-primary" href={content["common.cta.destination"]}>{content["common.cta.label"]} <ArrowRight size={18} /></a></section>}
       </main>
     </PublicShell>
   );

@@ -1,0 +1,1027 @@
+generator client {
+  provider     = "prisma-client"
+  output       = "../generated/prisma"
+  moduleFormat = "esm"
+  runtime      = "cloudflare"
+}
+
+generator nodeClient {
+  provider     = "prisma-client"
+  output       = "../generated/prisma-node"
+  moduleFormat = "esm"
+  runtime      = "nodejs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Branch {
+  id                     String                  @id
+  name                   String
+  regionCode             String                  @unique @map("region_code")
+  regionName             String                  @map("region_name")
+  status                 String                  @default("active")
+  directorProfileId      String?                 @map("director_profile_id")
+  createdAt              DateTime                @default(now()) @map("created_at")
+  updatedAt              DateTime                @updatedAt @map("updated_at")
+  archivedAt             DateTime?               @map("archived_at")
+  directorProfile        PersonProfile?          @relation("BranchDirector", fields: [directorProfileId], references: [id], onDelete: SetNull)
+  profiles               PersonProfile[]         @relation("ProfileBranch")
+  staff                  BranchStaff[]
+  applications           MembershipApplication[]
+  notes                  InternalNote[]
+  events                 Event[]
+  projects               Project[]
+  institutionalDocuments InstitutionalDocument[]
+
+  @@map("branches")
+}
+
+model Department {
+  id                                String                       @id
+  code                              String                       @unique
+  nameKk                            String                       @map("name_kk")
+  nameKey                           String                       @map("name_key")
+  unitType                          String                       @default("Департамент") @map("unit_type")
+  parentId                          String?                      @map("parent_id")
+  description                       String?
+  sortOrder                         Int                          @default(0) @map("sort_order")
+  createdAt                         DateTime                     @default(now()) @map("created_at")
+  updatedAt                         DateTime                     @updatedAt @map("updated_at")
+  archivedAt                        DateTime?                    @map("archived_at")
+  parent                            Department?                  @relation("DepartmentHierarchy", fields: [parentId], references: [id], onDelete: Restrict)
+  children                          Department[]                 @relation("DepartmentHierarchy")
+  assignments                       PersonDepartmentAssignment[]
+  responsibleEvents                 Event[]                      @relation("EventResponsibleDepartment")
+  responsibleProjects               Project[]                    @relation("ProjectResponsibleDepartment")
+  responsibleInstitutionalDocuments InstitutionalDocument[]      @relation("InstitutionalDocumentResponsibleDepartment")
+
+  @@index([parentId, archivedAt], map: "departments_parent_active_idx")
+  @@index([archivedAt, sortOrder], map: "departments_active_sort_idx")
+  @@map("departments")
+}
+
+model User {
+  id                                    String                                 @id
+  email                                 String                                 @unique
+  passwordHash                          String?                                @map("password_hash")
+  emailVerifiedAt                       DateTime?                              @map("email_verified_at")
+  status                                String                                 @default("active")
+  lastLoginAt                           DateTime?                              @map("last_login_at")
+  createdAt                             DateTime                               @default(now()) @map("created_at")
+  updatedAt                             DateTime                               @updatedAt @map("updated_at")
+  archivedAt                            DateTime?                              @map("archived_at")
+  profile                               PersonProfile?
+  roleAssignments                       UserRole[]                             @relation("UserRoleSubject")
+  grantedAssignments                    UserRole[]                             @relation("UserRoleGrantor")
+  branchStaff                           BranchStaff[]
+  reviewedApplications                  MembershipApplication[]                @relation("ApplicationReviewer")
+  statusChanges                         MembershipStatusHistory[]              @relation("StatusChanger")
+  uploadedDocuments                     UploadedDocument[]                     @relation("DocumentUploader")
+  authoredNotes                         InternalNote[]                         @relation("NoteAuthor")
+  auditLogs                             AuditLog[]                             @relation("AuditActor")
+  publicContentUpdates                  PublicContent[]                        @relation("PublicContentUpdater")
+  publicMediaUploads                    PublicMedia[]                          @relation("PublicMediaUploader")
+  createdNews                           News[]                                 @relation("NewsCreator")
+  updatedNews                           News[]                                 @relation("NewsUpdater")
+  createdPublications                   Publication[]                          @relation("PublicationCreator")
+  updatedPublications                   Publication[]                          @relation("PublicationUpdater")
+  createdPartners                       Partner[]                              @relation("PartnerCreator")
+  updatedPartners                       Partner[]                              @relation("PartnerUpdater")
+  createdPublicProjects                 PublicProject[]                        @relation("PublicProjectCreator")
+  updatedPublicProjects                 PublicProject[]                        @relation("PublicProjectUpdater")
+  assignedDepartments                   PersonDepartmentAssignment[]           @relation("DepartmentAssigner")
+  endedDepartments                      PersonDepartmentAssignment[]           @relation("DepartmentEnder")
+  assignedProfessionalCategories        PersonProfessionalCategoryAssignment[] @relation("ProfessionalCategoryAssigner")
+  removedProfessionalCategories         PersonProfessionalCategoryAssignment[] @relation("ProfessionalCategoryRemover")
+  membershipApplicationDraft            MembershipApplicationDraft?
+  emailVerificationTokens               EmailVerificationToken[]
+  passwordResetTokens                   PasswordResetToken[]
+  createdEvents                         Event[]                                @relation("EventCreator")
+  updatedEvents                         Event[]                                @relation("EventUpdater")
+  updatedEventResults                   EventResult[]                          @relation("EventResultUpdater")
+  createdEventNewsLinks                 EventNewsLink[]                        @relation("EventNewsLinkCreator")
+  createdEventRegistrations             EventRegistration[]                    @relation("EventRegistrationCreator")
+  cancelledEventRegistrations           EventRegistration[]                    @relation("EventRegistrationCanceller")
+  markedEventAttendance                 EventAttendance[]                      @relation("EventAttendanceMarker")
+  createdProjects                       Project[]                              @relation("ProjectCreator")
+  updatedProjects                       Project[]                              @relation("ProjectUpdater")
+  createdProjectStages                  ProjectStage[]                         @relation("ProjectStageCreator")
+  updatedProjectStages                  ProjectStage[]                         @relation("ProjectStageUpdater")
+  createdProjectParticipants            ProjectParticipant[]                   @relation("ProjectParticipantCreator")
+  updatedProjectResults                 ProjectResult[]                        @relation("ProjectResultUpdater")
+  uploadedProjectDocuments              ProjectDocument[]                      @relation("ProjectDocumentUploader")
+  createdInstitutionalDocuments         InstitutionalDocument[]                @relation("InstitutionalDocumentCreator")
+  updatedInstitutionalDocuments         InstitutionalDocument[]                @relation("InstitutionalDocumentUpdater")
+  uploadedInstitutionalDocumentVersions InstitutionalDocumentVersion[]         @relation("InstitutionalDocumentVersionUploader")
+
+  @@map("users")
+}
+
+model PersonProfile {
+  id                         String                                 @id
+  userId                     String?                                @unique @map("user_id")
+  fullName                   String                                 @map("full_name")
+  surname                    String?
+  givenName                  String?                                @map("given_name")
+  patronymic                 String?
+  birthDate                  DateTime?                              @map("birth_date") @db.Date
+  birthYear                  Int?                                   @map("birth_year")
+  regionCode                 String                                 @map("region_code")
+  cityDistrict               String                                 @map("city_district")
+  phone                      String
+  email                      String                                 @unique
+  workplace                  String?
+  position                   String?
+  education                  String?
+  educationLevelCode         String?                                @map("education_level_code")
+  educationInstitution       String?                                @map("education_institution")
+  educationProgram           String?                                @map("education_program")
+  professionalExperience     String?                                @map("professional_experience")
+  mathSpecialization         String?                                @map("math_specialization")
+  achievements               String?
+  biography                  String?
+  membershipStatus           String                                 @default("registered_user") @map("membership_status")
+  membershipStartedAt        DateTime?                              @map("membership_started_at")
+  branchId                   String?                                @map("branch_id")
+  createdAt                  DateTime                               @default(now()) @map("created_at")
+  updatedAt                  DateTime                               @updatedAt @map("updated_at")
+  archivedAt                 DateTime?                              @map("archived_at")
+  user                       User?                                  @relation(fields: [userId], references: [id], onDelete: SetNull)
+  branch                     Branch?                                @relation("ProfileBranch", fields: [branchId], references: [id], onDelete: SetNull)
+  directedBranches           Branch[]                               @relation("BranchDirector")
+  applications               MembershipApplication[]
+  statusHistory              MembershipStatusHistory[]
+  documents                  UploadedDocument[]                     @relation("DocumentOwner")
+  notes                      InternalNote[]
+  departmentAssignments      PersonDepartmentAssignment[]
+  professionalCategories     PersonProfessionalCategoryAssignment[]
+  membershipApplicationDraft MembershipApplicationDraft?
+  authoredNews               News[]                                 @relation("NewsAuthorProfile")
+  authoredPublications       Publication[]                          @relation("PublicationAuthorProfile")
+  responsibleEvents          Event[]                                @relation("EventResponsibleProfile")
+  eventRegistrations         EventRegistration[]
+  activities                 PersonActivity[]
+  ledProjects                Project[]                              @relation("ProjectLeader")
+  projectParticipations      ProjectParticipant[]
+
+  @@index([branchId], map: "person_profiles_branch_idx")
+  @@index([membershipStatus], map: "person_profiles_membership_status_idx")
+  @@map("person_profiles")
+}
+
+model PersonDepartmentAssignment {
+  id           String        @id
+  personId     String        @map("person_id")
+  departmentId String        @map("department_id")
+  assignedBy   String?       @map("assigned_by")
+  assignedAt   DateTime      @default(now()) @map("assigned_at")
+  endedBy      String?       @map("ended_by")
+  endedAt      DateTime?     @map("ended_at")
+  person       PersonProfile @relation(fields: [personId], references: [id], onDelete: Restrict)
+  department   Department    @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  assigner     User?         @relation("DepartmentAssigner", fields: [assignedBy], references: [id], onDelete: SetNull)
+  ender        User?         @relation("DepartmentEnder", fields: [endedBy], references: [id], onDelete: SetNull)
+
+  @@index([personId], map: "person_department_assignments_person_idx")
+  @@index([departmentId, endedAt], map: "person_department_assignments_department_active_idx")
+  @@map("person_department_assignments")
+}
+
+model ProfessionalCategory {
+  id          String                                 @id
+  name        String                                 @unique
+  description String?
+  sortOrder   Int                                    @default(0) @map("sort_order")
+  status      String                                 @default("active")
+  createdAt   DateTime                               @default(now()) @map("created_at")
+  updatedAt   DateTime                               @updatedAt @map("updated_at")
+  assignments PersonProfessionalCategoryAssignment[]
+
+  @@index([status, sortOrder], map: "professional_categories_status_sort_idx")
+  @@map("professional_categories")
+}
+
+model PersonProfessionalCategoryAssignment {
+  id         String               @id
+  personId   String               @map("person_id")
+  categoryId String               @map("category_id")
+  assignedBy String?              @map("assigned_by")
+  assignedAt DateTime             @default(now()) @map("assigned_at")
+  removedBy  String?              @map("removed_by")
+  removedAt  DateTime?            @map("removed_at")
+  person     PersonProfile        @relation(fields: [personId], references: [id], onDelete: Restrict)
+  category   ProfessionalCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  assigner   User?                @relation("ProfessionalCategoryAssigner", fields: [assignedBy], references: [id], onDelete: SetNull)
+  remover    User?                @relation("ProfessionalCategoryRemover", fields: [removedBy], references: [id], onDelete: SetNull)
+
+  @@index([personId, removedAt], map: "person_professional_categories_person_active_idx")
+  @@index([categoryId, removedAt], map: "person_professional_categories_category_active_idx")
+  @@map("person_professional_category_assignments")
+}
+
+model Role {
+  id              String           @id
+  slug            String           @unique
+  nameKk          String           @map("name_kk")
+  accessLevel     String           @map("access_level")
+  description     String?
+  createdAt       DateTime         @default(now()) @map("created_at")
+  permissions     RolePermission[]
+  userAssignments UserRole[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id          String           @id
+  slug        String           @unique
+  description String
+  createdAt   DateTime         @default(now()) @map("created_at")
+  roles       RolePermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  id           String     @id
+  roleId       String     @map("role_id")
+  permissionId String     @map("permission_id")
+  createdAt    DateTime   @default(now()) @map("created_at")
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Restrict)
+
+  @@unique([roleId, permissionId], map: "role_permissions_unique")
+  @@map("role_permissions")
+}
+
+model UserRole {
+  id        String    @id
+  userId    String    @map("user_id")
+  roleId    String    @map("role_id")
+  scopeType String    @default("global") @map("scope_type")
+  scopeId   String?   @map("scope_id")
+  grantedBy String?   @map("granted_by")
+  grantedAt DateTime  @default(now()) @map("granted_at")
+  revokedAt DateTime? @map("revoked_at")
+  user      User      @relation("UserRoleSubject", fields: [userId], references: [id], onDelete: Restrict)
+  role      Role      @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  grantor   User?     @relation("UserRoleGrantor", fields: [grantedBy], references: [id], onDelete: SetNull)
+
+  @@index([userId], map: "user_roles_user_idx")
+  @@map("user_roles")
+}
+
+model BranchStaff {
+  id         String    @id
+  branchId   String    @map("branch_id")
+  userId     String    @map("user_id")
+  staffType  String    @map("staff_type")
+  activeFrom DateTime  @map("active_from")
+  activeTo   DateTime? @map("active_to")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  branch     Branch    @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  user       User      @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@unique([branchId, userId], map: "branch_staff_active_unique")
+  @@map("branch_staff")
+}
+
+model MembershipApplication {
+  id                   String                      @id
+  personId             String                      @map("person_id")
+  branchId             String                      @map("branch_id")
+  status               String                      @default("awaiting_review")
+  submittedAt          DateTime                    @default(now()) @map("submitted_at")
+  reviewedAt           DateTime?                   @map("reviewed_at")
+  reviewedBy           String?                     @map("reviewed_by")
+  decisionReason       String?                     @map("decision_reason")
+  termsVersion         String                      @map("terms_version")
+  termsAcceptedAt      DateTime                    @map("terms_accepted_at")
+  privacyPolicyVersion String?                     @map("privacy_policy_version")
+  privacyAcceptedAt    DateTime?                   @map("privacy_accepted_at")
+  source               String                      @default("web")
+  joiningPurpose       String?                     @map("joining_purpose")
+  archivedAt           DateTime?                   @map("archived_at")
+  person               PersonProfile               @relation(fields: [personId], references: [id], onDelete: Restrict)
+  branch               Branch                      @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  reviewer             User?                       @relation("ApplicationReviewer", fields: [reviewedBy], references: [id], onDelete: SetNull)
+  statusHistory        MembershipStatusHistory[]
+  documents            UploadedDocument[]
+  notes                InternalNote[]
+  fieldValues          ApplicationFieldValue[]
+  sourceDraft          MembershipApplicationDraft?
+
+  @@index([branchId], map: "membership_applications_branch_idx")
+  @@index([status], map: "membership_applications_status_idx")
+  @@map("membership_applications")
+}
+
+model MembershipApplicationDraft {
+  id                     String                 @id
+  userId                 String                 @unique @map("user_id")
+  personId               String                 @unique @map("person_id")
+  fullName               String?                @map("full_name")
+  surname                String?
+  givenName              String?                @map("given_name")
+  patronymic             String?
+  birthDate              DateTime?              @map("birth_date") @db.Date
+  birthYear              Int?                   @map("birth_year")
+  regionCode             String?                @map("region_code")
+  cityDistrict           String?                @map("city_district")
+  phone                  String?
+  workplace              String?
+  position               String?
+  education              String?
+  educationLevelCode     String?                @map("education_level_code")
+  educationInstitution   String?                @map("education_institution")
+  educationProgram       String?                @map("education_program")
+  professionalExperience String?                @map("professional_experience")
+  mathSpecialization     String?                @map("math_specialization")
+  achievements           String?
+  joiningPurpose         String?                @map("joining_purpose")
+  biography              String?
+  source                 String                 @default("web")
+  termsAccepted          Boolean                @default(false) @map("terms_accepted")
+  privacyAccepted        Boolean                @default(false) @map("privacy_accepted")
+  status                 String                 @default("draft")
+  submittedApplicationId String?                @unique @map("submitted_application_id")
+  createdAt              DateTime               @default(now()) @map("created_at")
+  updatedAt              DateTime               @updatedAt @map("updated_at")
+  user                   User                   @relation(fields: [userId], references: [id], onDelete: Restrict)
+  person                 PersonProfile          @relation(fields: [personId], references: [id], onDelete: Restrict)
+  submittedApplication   MembershipApplication? @relation(fields: [submittedApplicationId], references: [id], onDelete: Restrict)
+  documents              UploadedDocument[]
+
+  @@index([status, updatedAt], map: "membership_application_drafts_status_updated_idx")
+  @@map("membership_application_drafts")
+}
+
+model EmailVerificationToken {
+  id        String    @id
+  userId    String    @map("user_id")
+  tokenHash String    @unique @map("token_hash")
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  user      User      @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([userId, createdAt], map: "email_verification_tokens_user_created_idx")
+  @@map("email_verification_tokens")
+}
+
+model PasswordResetToken {
+  id        String    @id
+  userId    String    @map("user_id")
+  tokenHash String    @unique @map("token_hash")
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  user      User      @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([userId, createdAt], map: "password_reset_tokens_user_created_idx")
+  @@map("password_reset_tokens")
+}
+
+model MembershipStatusHistory {
+  id             String                 @id
+  personId       String                 @map("person_id")
+  applicationId  String?                @map("application_id")
+  previousStatus String?                @map("previous_status")
+  newStatus      String                 @map("new_status")
+  reason         String?
+  visibility     String                 @default("internal")
+  changedBy      String?                @map("changed_by")
+  createdAt      DateTime               @default(now()) @map("created_at")
+  person         PersonProfile          @relation(fields: [personId], references: [id], onDelete: Restrict)
+  application    MembershipApplication? @relation(fields: [applicationId], references: [id], onDelete: SetNull)
+  changer        User?                  @relation("StatusChanger", fields: [changedBy], references: [id], onDelete: SetNull)
+
+  @@index([personId], map: "membership_status_history_person_idx")
+  @@map("membership_status_history")
+}
+
+model UploadedDocument {
+  id             String                      @id
+  ownerPersonId  String                      @map("owner_person_id")
+  applicationId  String?                     @map("application_id")
+  draftId        String?                     @map("draft_id")
+  uploadedBy     String?                     @map("uploaded_by")
+  objectKey      String                      @unique @map("object_key")
+  originalName   String                      @map("original_name")
+  mimeType       String                      @map("mime_type")
+  sizeBytes      Int                         @map("size_bytes")
+  checksumSha256 String                      @map("checksum_sha256")
+  visibility     String                      @default("reviewers")
+  status         String                      @default("active")
+  createdAt      DateTime                    @default(now()) @map("created_at")
+  updatedAt      DateTime                    @updatedAt @map("updated_at")
+  archivedAt     DateTime?                   @map("archived_at")
+  owner          PersonProfile               @relation("DocumentOwner", fields: [ownerPersonId], references: [id], onDelete: Restrict)
+  application    MembershipApplication?      @relation(fields: [applicationId], references: [id], onDelete: SetNull)
+  draft          MembershipApplicationDraft? @relation(fields: [draftId], references: [id], onDelete: SetNull)
+  uploader       User?                       @relation("DocumentUploader", fields: [uploadedBy], references: [id], onDelete: SetNull)
+
+  @@map("uploaded_documents")
+}
+
+model PrivateObject {
+  objectKey String   @id @map("object_key")
+  body      Bytes
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("private_objects")
+}
+
+model InternalNote {
+  id            String                 @id
+  personId      String?                @map("person_id")
+  applicationId String?                @map("application_id")
+  branchId      String?                @map("branch_id")
+  authorUserId  String                 @map("author_user_id")
+  note          String
+  visibility    String                 @default("central")
+  createdAt     DateTime               @default(now()) @map("created_at")
+  archivedAt    DateTime?              @map("archived_at")
+  person        PersonProfile?         @relation(fields: [personId], references: [id], onDelete: SetNull)
+  application   MembershipApplication? @relation(fields: [applicationId], references: [id], onDelete: SetNull)
+  branch        Branch?                @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  author        User                   @relation("NoteAuthor", fields: [authorUserId], references: [id], onDelete: Restrict)
+
+  @@index([applicationId], map: "internal_notes_application_idx")
+  @@map("internal_notes")
+}
+
+model AuditLog {
+  id             String   @id
+  actorUserId    String?  @map("actor_user_id")
+  actionType     String   @map("action_type")
+  targetEntity   String   @map("target_entity")
+  targetEntityId String   @map("target_entity_id")
+  previousValue  String?  @map("previous_value")
+  newValue       String?  @map("new_value")
+  reason         String?
+  ipAddress      String?  @map("ip_address")
+  sessionId      String?  @map("session_id")
+  createdAt      DateTime @default(now()) @map("created_at")
+  actor          User?    @relation("AuditActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([targetEntity, targetEntityId], map: "audit_logs_target_idx")
+  @@index([createdAt], map: "audit_logs_created_at_idx")
+  @@map("audit_logs")
+}
+
+model PublicContent {
+  key       String   @id
+  section   String
+  value     String
+  valueType String   @map("value_type")
+  updatedBy String?  @map("updated_by")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  updater   User?    @relation("PublicContentUpdater", fields: [updatedBy], references: [id], onDelete: SetNull)
+
+  @@index([section], map: "public_content_section_idx")
+  @@map("public_content")
+}
+
+model PublicMedia {
+  id                String          @id
+  objectKey         String          @unique @map("object_key")
+  originalName      String          @map("original_name")
+  mimeType          String          @map("mime_type")
+  sizeBytes         Int             @map("size_bytes")
+  checksumSha256    String          @map("checksum_sha256")
+  status            String          @default("active")
+  uploadedBy        String          @map("uploaded_by")
+  createdAt         DateTime        @default(now()) @map("created_at")
+  archivedAt        DateTime?       @map("archived_at")
+  purgeStartedAt    DateTime?       @map("purge_started_at")
+  uploader          User            @relation("PublicMediaUploader", fields: [uploadedBy], references: [id], onDelete: Restrict)
+  newsCovers        News[]
+  publicationCovers Publication[]
+  partnerLogos      Partner[]
+  projectCovers     PublicProject[]
+  eventCovers       Event[]
+
+  @@index([status, createdAt], map: "public_media_status_created_idx")
+  @@index([status, archivedAt], map: "public_media_status_archived_idx")
+  @@map("public_media")
+}
+
+model PublicObject {
+  objectKey String   @id @map("object_key")
+  body      Bytes
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("public_objects")
+}
+
+model News {
+  id              String          @id
+  title           String
+  slug            String          @unique
+  lead            String
+  body            String
+  bodyFormat      String          @default("restricted_markdown") @map("body_format")
+  coverMediaId    String?         @map("cover_media_id")
+  authorText      String?         @map("author_text")
+  authorProfileId String?         @map("author_profile_id")
+  status          String          @default("DRAFT")
+  publishedAt     DateTime?       @map("published_at")
+  archivedAt      DateTime?       @map("archived_at")
+  createdBy       String          @map("created_by")
+  updatedBy       String          @map("updated_by")
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+  coverMedia      PublicMedia?    @relation(fields: [coverMediaId], references: [id], onDelete: SetNull)
+  authorProfile   PersonProfile?  @relation("NewsAuthorProfile", fields: [authorProfileId], references: [id], onDelete: SetNull)
+  creator         User            @relation("NewsCreator", fields: [createdBy], references: [id], onDelete: Restrict)
+  updater         User            @relation("NewsUpdater", fields: [updatedBy], references: [id], onDelete: Restrict)
+  eventLinks      EventNewsLink[]
+
+  @@index([status, publishedAt], map: "news_publication_idx")
+  @@index([status, archivedAt], map: "news_status_archived_idx")
+  @@index([createdAt], map: "news_created_idx")
+  @@map("news")
+}
+
+model Event {
+  id                      String              @id
+  title                   String
+  slug                    String              @unique
+  summary                 String
+  description             String
+  bodyFormat              String              @default("restricted_markdown") @map("body_format")
+  startAt                 DateTime            @map("start_at")
+  endAt                   DateTime            @map("end_at")
+  eventScope              String              @map("event_scope")
+  branchId                String?             @map("branch_id")
+  regionName              String?             @map("region_name")
+  venue                   String?
+  eventFormat             String              @map("event_format")
+  onlineUrl               String?             @map("online_url")
+  audience                String
+  coverMediaId            String?             @map("cover_media_id")
+  organizer               String
+  responsibleProfileId    String?             @map("responsible_profile_id")
+  responsibleDepartmentId String?             @map("responsible_department_id")
+  registrationMode        String              @default("NONE") @map("registration_mode")
+  externalRegistrationUrl String?             @map("external_registration_url")
+  participantLimit        Int?                @map("participant_limit")
+  seatingType             String              @default("NONE") @map("seating_type")
+  status                  String              @default("DRAFT")
+  statusNote              String?             @map("status_note")
+  submittedAt             DateTime?           @map("submitted_at")
+  publishedAt             DateTime?           @map("published_at")
+  postponedAt             DateTime?           @map("postponed_at")
+  cancelledAt             DateTime?           @map("cancelled_at")
+  completedAt             DateTime?           @map("completed_at")
+  archivedAt              DateTime?           @map("archived_at")
+  createdBy               String              @map("created_by")
+  updatedBy               String              @map("updated_by")
+  createdAt               DateTime            @default(now()) @map("created_at")
+  updatedAt               DateTime            @updatedAt @map("updated_at")
+  branch                  Branch?             @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  coverMedia              PublicMedia?        @relation(fields: [coverMediaId], references: [id], onDelete: SetNull)
+  responsibleProfile      PersonProfile?      @relation("EventResponsibleProfile", fields: [responsibleProfileId], references: [id], onDelete: SetNull)
+  responsibleDepartment   Department?         @relation("EventResponsibleDepartment", fields: [responsibleDepartmentId], references: [id], onDelete: SetNull)
+  creator                 User                @relation("EventCreator", fields: [createdBy], references: [id], onDelete: Restrict)
+  updater                 User                @relation("EventUpdater", fields: [updatedBy], references: [id], onDelete: Restrict)
+  result                  EventResult?
+  newsLinks               EventNewsLink[]
+  registrations           EventRegistration[]
+  seatingUnits            EventSeatingUnit[]
+  activities              PersonActivity[]
+
+  @@index([status, startAt], map: "events_publication_start_idx")
+  @@index([branchId, status, startAt], map: "events_branch_status_start_idx")
+  @@index([eventScope, status], map: "events_scope_status_idx")
+  @@index([archivedAt], map: "events_archived_idx")
+  @@map("events")
+}
+
+model EventSeatingUnit {
+  id            String              @id
+  eventId       String              @map("event_id")
+  label         String
+  seatCount     Int                 @map("seat_count")
+  sortOrder     Int                 @default(0) @map("sort_order")
+  createdAt     DateTime            @default(now()) @map("created_at")
+  updatedAt     DateTime            @updatedAt @map("updated_at")
+  event         Event               @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  registrations EventRegistration[]
+
+  @@unique([eventId, label], map: "event_seating_units_event_label_unique")
+  @@index([eventId, sortOrder], map: "event_seating_units_event_order_idx")
+  @@map("event_seating_units")
+}
+
+model EventRegistration {
+  id                 String            @id
+  eventId            String            @map("event_id")
+  participantType    String            @default("MEMBER") @map("participant_type")
+  personId           String?           @map("person_id")
+  fullName           String            @map("full_name")
+  email              String?
+  phone              String?
+  organization       String?
+  regionName         String?           @map("region_name")
+  guestGroup         String?           @map("guest_group")
+  registrationStatus String            @default("REGISTERED") @map("registration_status")
+  registrationSource String            @default("SELF") @map("registration_source")
+  registeredBy       String?           @map("registered_by")
+  registeredAt       DateTime          @default(now()) @map("registered_at")
+  cancelledBy        String?           @map("cancelled_by")
+  cancelledAt        DateTime?         @map("cancelled_at")
+  cancellationReason String?           @map("cancellation_reason")
+  seatingUnitId      String?           @map("seating_unit_id")
+  seatNumber         Int?              @map("seat_number")
+  createdAt          DateTime          @default(now()) @map("created_at")
+  updatedAt          DateTime          @updatedAt @map("updated_at")
+  event              Event             @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  person             PersonProfile?    @relation(fields: [personId], references: [id], onDelete: Restrict)
+  creator            User?             @relation("EventRegistrationCreator", fields: [registeredBy], references: [id], onDelete: SetNull)
+  canceller          User?             @relation("EventRegistrationCanceller", fields: [cancelledBy], references: [id], onDelete: SetNull)
+  seatingUnit        EventSeatingUnit? @relation(fields: [seatingUnitId], references: [id], onDelete: Restrict)
+  attendance         EventAttendance?
+  activity           PersonActivity?
+
+  @@unique([eventId, personId], map: "event_registrations_event_person_unique")
+  @@unique([eventId, seatingUnitId, seatNumber], map: "event_registrations_event_seat_unique")
+  @@index([eventId, registrationStatus, registeredAt], map: "event_registrations_event_status_idx")
+  @@index([personId, registeredAt], map: "event_registrations_person_idx")
+  @@map("event_registrations")
+}
+
+model EventAttendance {
+  id             String            @id
+  registrationId String            @unique @map("registration_id")
+  status         String            @default("PENDING")
+  markedAt       DateTime?         @map("marked_at")
+  markedBy       String?           @map("marked_by")
+  method         String?
+  createdAt      DateTime          @default(now()) @map("created_at")
+  updatedAt      DateTime          @updatedAt @map("updated_at")
+  registration   EventRegistration @relation(fields: [registrationId], references: [id], onDelete: Restrict)
+  marker         User?             @relation("EventAttendanceMarker", fields: [markedBy], references: [id], onDelete: SetNull)
+
+  @@index([status, markedAt], map: "event_attendance_status_idx")
+  @@map("event_attendance")
+}
+
+model PersonActivity {
+  id                   String              @id
+  personId             String              @map("person_id")
+  eventId              String?             @map("event_id")
+  registrationId       String?             @unique @map("registration_id")
+  projectId            String?             @map("project_id")
+  projectParticipantId String?             @unique @map("project_participant_id")
+  activityType         String              @default("EVENT_PARTICIPATION") @map("activity_type")
+  title                String
+  description          String?
+  occurredAt           DateTime            @map("occurred_at")
+  status               String              @default("ACTIVE")
+  revokedAt            DateTime?           @map("revoked_at")
+  createdAt            DateTime            @default(now()) @map("created_at")
+  updatedAt            DateTime            @updatedAt @map("updated_at")
+  person               PersonProfile       @relation(fields: [personId], references: [id], onDelete: Restrict)
+  event                Event?              @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  registration         EventRegistration?  @relation(fields: [registrationId], references: [id], onDelete: Restrict)
+  project              Project?            @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  projectParticipant   ProjectParticipant? @relation(fields: [projectParticipantId], references: [id], onDelete: Restrict)
+
+  @@unique([eventId, personId, activityType], map: "person_activities_event_person_type_unique")
+  @@unique([projectId, personId, activityType], map: "person_activities_project_person_type_unique")
+  @@index([personId, status, occurredAt], map: "person_activities_person_status_idx")
+  @@index([eventId, status], map: "person_activities_event_status_idx")
+  @@index([projectId, status], map: "person_activities_project_status_idx")
+  @@map("person_activities")
+}
+
+model EventResult {
+  eventId             String   @id @map("event_id")
+  summary             String
+  participantCount    Int?     @map("participant_count")
+  audienceDescription String?  @map("audience_description")
+  mainTopics          String?  @map("main_topics")
+  outcomes            String?
+  decisions           String?
+  speakers            String?
+  notes               String?
+  materialReferences  String?  @map("material_references")
+  updatedBy           String   @map("updated_by")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+  event               Event    @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  updater             User     @relation("EventResultUpdater", fields: [updatedBy], references: [id], onDelete: Restrict)
+
+  @@map("event_results")
+}
+
+model EventNewsLink {
+  id           String   @id
+  eventId      String   @map("event_id")
+  newsId       String   @unique @map("news_id")
+  relationType String   @map("relation_type")
+  createdBy    String   @map("created_by")
+  createdAt    DateTime @default(now()) @map("created_at")
+  event        Event    @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  news         News     @relation(fields: [newsId], references: [id], onDelete: Restrict)
+  creator      User     @relation("EventNewsLinkCreator", fields: [createdBy], references: [id], onDelete: Restrict)
+
+  @@unique([eventId, relationType], map: "event_news_links_type_unique")
+  @@index([eventId], map: "event_news_links_event_idx")
+  @@map("event_news_links")
+}
+
+model Publication {
+  id              String         @id
+  title           String
+  slug            String         @unique
+  summary         String
+  body            String
+  bodyFormat      String         @default("restricted_markdown") @map("body_format")
+  coverMediaId    String?        @map("cover_media_id")
+  authorText      String?        @map("author_text")
+  authorProfileId String?        @map("author_profile_id")
+  publicationDate DateTime?      @map("publication_date") @db.Date
+  resourceUrl     String?        @map("resource_url")
+  status          String         @default("DRAFT")
+  publishedAt     DateTime?      @map("published_at")
+  archivedAt      DateTime?      @map("archived_at")
+  createdBy       String         @map("created_by")
+  updatedBy       String         @map("updated_by")
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+  coverMedia      PublicMedia?   @relation(fields: [coverMediaId], references: [id], onDelete: SetNull)
+  authorProfile   PersonProfile? @relation("PublicationAuthorProfile", fields: [authorProfileId], references: [id], onDelete: SetNull)
+  creator         User           @relation("PublicationCreator", fields: [createdBy], references: [id], onDelete: Restrict)
+  updater         User           @relation("PublicationUpdater", fields: [updatedBy], references: [id], onDelete: Restrict)
+
+  @@index([status, publishedAt], map: "publications_publication_idx")
+  @@index([status, archivedAt], map: "publications_status_archived_idx")
+  @@index([publicationDate], map: "publications_date_idx")
+  @@map("publications")
+}
+
+model Partner {
+  id           String       @id
+  name         String
+  description  String
+  websiteUrl   String?      @map("website_url")
+  logoMediaId  String?      @map("logo_media_id")
+  displayOrder Int          @default(0) @map("display_order")
+  status       String       @default("active")
+  createdBy    String       @map("created_by")
+  updatedBy    String       @map("updated_by")
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
+  logoMedia    PublicMedia? @relation(fields: [logoMediaId], references: [id], onDelete: SetNull)
+  creator      User         @relation("PartnerCreator", fields: [createdBy], references: [id], onDelete: Restrict)
+  updater      User         @relation("PartnerUpdater", fields: [updatedBy], references: [id], onDelete: Restrict)
+
+  @@index([status, displayOrder], map: "partners_public_idx")
+  @@map("partners")
+}
+
+model PublicProject {
+  id              String       @id
+  title           String
+  slug            String       @unique
+  summary         String
+  body            String
+  bodyFormat      String       @default("restricted_markdown") @map("body_format")
+  coverMediaId    String?      @map("cover_media_id")
+  displayOrder    Int          @default(0) @map("display_order")
+  publicStartDate DateTime?    @map("public_start_date") @db.Date
+  publicEndDate   DateTime?    @map("public_end_date") @db.Date
+  status          String       @default("DRAFT")
+  publishedAt     DateTime?    @map("published_at")
+  archivedAt      DateTime?    @map("archived_at")
+  createdBy       String       @map("created_by")
+  updatedBy       String       @map("updated_by")
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+  coverMedia      PublicMedia? @relation(fields: [coverMediaId], references: [id], onDelete: SetNull)
+  creator         User         @relation("PublicProjectCreator", fields: [createdBy], references: [id], onDelete: Restrict)
+  updater         User         @relation("PublicProjectUpdater", fields: [updatedBy], references: [id], onDelete: Restrict)
+  managedProject  Project?
+
+  @@index([status, displayOrder, publishedAt], map: "public_projects_public_idx")
+  @@index([status, archivedAt], map: "public_projects_status_archived_idx")
+  @@map("public_projects")
+}
+
+model Project {
+  id                      String               @id
+  title                   String
+  code                    String?              @unique
+  summary                 String
+  description             String?
+  projectScope            String               @map("project_scope")
+  branchId                String?              @map("branch_id")
+  responsibleDepartmentId String?              @map("responsible_department_id")
+  leaderProfileId         String?              @map("leader_profile_id")
+  startDate               DateTime             @map("start_date") @db.Date
+  endDate                 DateTime?            @map("end_date") @db.Date
+  status                  String               @default("DRAFT")
+  statusNote              String?              @map("status_note")
+  publicProjectId         String?              @unique @map("public_project_id")
+  createdBy               String               @map("created_by")
+  updatedBy               String               @map("updated_by")
+  createdAt               DateTime             @default(now()) @map("created_at")
+  updatedAt               DateTime             @updatedAt @map("updated_at")
+  archivedAt              DateTime?            @map("archived_at")
+  branch                  Branch?              @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  responsibleDepartment   Department?          @relation("ProjectResponsibleDepartment", fields: [responsibleDepartmentId], references: [id], onDelete: Restrict)
+  leaderProfile           PersonProfile?       @relation("ProjectLeader", fields: [leaderProfileId], references: [id], onDelete: SetNull)
+  publicProject           PublicProject?       @relation(fields: [publicProjectId], references: [id], onDelete: SetNull)
+  creator                 User                 @relation("ProjectCreator", fields: [createdBy], references: [id], onDelete: Restrict)
+  updater                 User                 @relation("ProjectUpdater", fields: [updatedBy], references: [id], onDelete: Restrict)
+  stages                  ProjectStage[]
+  participants            ProjectParticipant[]
+  documents               ProjectDocument[]
+  result                  ProjectResult?
+  activities              PersonActivity[]
+
+  @@index([status, startDate], map: "projects_status_start_idx")
+  @@index([branchId, status], map: "projects_branch_status_idx")
+  @@index([responsibleDepartmentId, status], map: "projects_department_status_idx")
+  @@index([leaderProfileId, status], map: "projects_leader_status_idx")
+  @@index([archivedAt], map: "projects_archived_idx")
+  @@map("projects")
+}
+
+model ProjectStage {
+  id          String    @id
+  projectId   String    @map("project_id")
+  title       String
+  description String?
+  startDate   DateTime? @map("start_date") @db.Date
+  endDate     DateTime? @map("end_date") @db.Date
+  status      String    @default("PENDING")
+  sortOrder   Int       @default(0) @map("sort_order")
+  completedAt DateTime? @map("completed_at")
+  createdBy   String    @map("created_by")
+  updatedBy   String    @map("updated_by")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  creator     User      @relation("ProjectStageCreator", fields: [createdBy], references: [id], onDelete: Restrict)
+  updater     User      @relation("ProjectStageUpdater", fields: [updatedBy], references: [id], onDelete: Restrict)
+
+  @@index([projectId, sortOrder], map: "project_stages_project_order_idx")
+  @@map("project_stages")
+}
+
+model ProjectParticipant {
+  id              String          @id
+  projectId       String          @map("project_id")
+  personId        String          @map("person_id")
+  participantRole String          @default("PARTICIPANT") @map("participant_role")
+  status          String          @default("ACTIVE")
+  joinedAt        DateTime        @default(now()) @map("joined_at")
+  completedAt     DateTime?       @map("completed_at")
+  endedAt         DateTime?       @map("ended_at")
+  notes           String?
+  createdBy       String          @map("created_by")
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+  project         Project         @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  person          PersonProfile   @relation(fields: [personId], references: [id], onDelete: Restrict)
+  creator         User            @relation("ProjectParticipantCreator", fields: [createdBy], references: [id], onDelete: Restrict)
+  activity        PersonActivity?
+
+  @@unique([projectId, personId], map: "project_participants_project_person_unique")
+  @@index([personId, status], map: "project_participants_person_status_idx")
+  @@index([projectId, status], map: "project_participants_project_status_idx")
+  @@map("project_participants")
+}
+
+model ProjectResult {
+  projectId        String    @id @map("project_id")
+  summary          String
+  outcomes         String?
+  deliverables     String?
+  beneficiaryCount Int?      @map("beneficiary_count")
+  completedAt      DateTime? @map("completed_at") @db.Date
+  updatedBy        String    @map("updated_by")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+  project          Project   @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  updater          User      @relation("ProjectResultUpdater", fields: [updatedBy], references: [id], onDelete: Restrict)
+
+  @@map("project_results")
+}
+
+model ProjectDocument {
+  id             String    @id
+  projectId      String    @map("project_id")
+  category       String    @default("OTHER")
+  objectKey      String    @unique @map("object_key")
+  originalName   String    @map("original_name")
+  mimeType       String    @map("mime_type")
+  sizeBytes      Int       @map("size_bytes")
+  checksumSha256 String    @map("checksum_sha256")
+  status         String    @default("active")
+  uploadedBy     String    @map("uploaded_by")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+  archivedAt     DateTime? @map("archived_at")
+  project        Project   @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  uploader       User      @relation("ProjectDocumentUploader", fields: [uploadedBy], references: [id], onDelete: Restrict)
+
+  @@index([projectId, status, createdAt], map: "project_documents_project_status_idx")
+  @@map("project_documents")
+}
+
+model InstitutionalDocument {
+  id                      String                         @id
+  title                   String
+  documentNumber          String                         @map("document_number")
+  documentDate            DateTime                       @map("document_date") @db.Date
+  documentType            String                         @map("document_type")
+  scopeType               String                         @default("NATIONAL") @map("scope_type")
+  branchId                String?                        @map("branch_id")
+  responsibleDepartmentId String?                        @map("responsible_department_id")
+  accessLevel             String                         @default("RESPONSIBLE") @map("access_level")
+  summary                 String?
+  status                  String                         @default("ACTIVE")
+  createdBy               String                         @map("created_by")
+  updatedBy               String                         @map("updated_by")
+  createdAt               DateTime                       @default(now()) @map("created_at")
+  updatedAt               DateTime                       @updatedAt @map("updated_at")
+  archivedAt              DateTime?                      @map("archived_at")
+  branch                  Branch?                        @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  responsibleDepartment   Department?                    @relation("InstitutionalDocumentResponsibleDepartment", fields: [responsibleDepartmentId], references: [id], onDelete: Restrict)
+  creator                 User                           @relation("InstitutionalDocumentCreator", fields: [createdBy], references: [id], onDelete: Restrict)
+  updater                 User                           @relation("InstitutionalDocumentUpdater", fields: [updatedBy], references: [id], onDelete: Restrict)
+  versions                InstitutionalDocumentVersion[]
+
+  @@unique([documentNumber, documentDate, documentType], map: "institutional_documents_number_date_type_unique")
+  @@index([status, documentDate], map: "institutional_documents_status_date_idx")
+  @@index([branchId, status], map: "institutional_documents_branch_status_idx")
+  @@index([responsibleDepartmentId, status], map: "institutional_documents_department_status_idx")
+  @@map("institutional_documents")
+}
+
+model InstitutionalDocumentVersion {
+  id             String                @id
+  documentId     String                @map("document_id")
+  versionNumber  Int                   @map("version_number")
+  objectKey      String                @unique @map("object_key")
+  originalName   String                @map("original_name")
+  mimeType       String                @map("mime_type")
+  sizeBytes      Int                   @map("size_bytes")
+  checksumSha256 String                @map("checksum_sha256")
+  changeNote     String?               @map("change_note")
+  uploadedBy     String                @map("uploaded_by")
+  createdAt      DateTime              @default(now()) @map("created_at")
+  document       InstitutionalDocument @relation(fields: [documentId], references: [id], onDelete: Restrict)
+  uploader       User                  @relation("InstitutionalDocumentVersionUploader", fields: [uploadedBy], references: [id], onDelete: Restrict)
+
+  @@unique([documentId, versionNumber], map: "institutional_document_versions_document_version_unique")
+  @@index([documentId, createdAt], map: "institutional_document_versions_document_date_idx")
+  @@map("institutional_document_versions")
+}
+
+model ApplicationFieldDefinition {
+  id                String                  @id
+  fieldKey          String                  @unique @map("field_key")
+  labelKk           String                  @map("label_kk")
+  fieldType         String                  @map("field_type")
+  required          Boolean                 @default(false)
+  sortOrder         Int                     @default(0) @map("sort_order")
+  enabled           Boolean                 @default(true)
+  configurationJson String?                 @map("configuration_json")
+  createdAt         DateTime                @default(now()) @map("created_at")
+  updatedAt         DateTime                @updatedAt @map("updated_at")
+  values            ApplicationFieldValue[]
+
+  @@map("application_field_definitions")
+}
+
+model ApplicationFieldValue {
+  id                String                     @id
+  applicationId     String                     @map("application_id")
+  fieldDefinitionId String                     @map("field_definition_id")
+  valueText         String?                    @map("value_text")
+  createdAt         DateTime                   @default(now()) @map("created_at")
+  application       MembershipApplication      @relation(fields: [applicationId], references: [id], onDelete: Restrict)
+  fieldDefinition   ApplicationFieldDefinition @relation(fields: [fieldDefinitionId], references: [id], onDelete: Restrict)
+
+  @@unique([applicationId, fieldDefinitionId], map: "application_field_values_unique")
+  @@map("application_field_values")
+}
+
+model RateLimit {
+  key         String @id
+  windowStart Int    @map("window_start")
+  count       Int
+
+  @@map("rate_limits")
+}

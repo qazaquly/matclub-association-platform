@@ -1,7 +1,9 @@
 import { ensureDatabase } from "./bootstrap";
-import { getRawDb } from "./index";
-import { branchScopeIds, isFullAccess } from "@/lib/authorization";
+import { getDb } from "./index";
+import { Prisma } from "@/generated/prisma/client";
+import { branchScopeIds, departmentScopeIds, isFullAccess, isNationwideProfessionalAccess } from "@/lib/authorization";
 import type { AppUser } from "@/lib/types";
+import { defaultPublicContent, type PublicContentValues } from "@/lib/public-content";
 
 export interface DashboardMetrics {
   registeredUsers: number;
@@ -25,76 +27,180 @@ export interface ApplicationListRow {
   branchName: string;
 }
 
-function scopedWhere(user: AppUser, alias: string) {
-  if (isFullAccess(user)) return { clause: "1 = 1", params: [] as string[] };
-  const branches = branchScopeIds(user);
-  if (branches.length === 0) return { clause: "1 = 0", params: [] as string[] };
+export interface ApplicationCandidateListRow {
+  personId: string;
+  applicationId: string | null;
+  fullName: string;
+  email: string;
+  cityDistrict: string;
+  workplace: string | null;
+  position: string | null;
+  membershipStatus: "registered_user" | "applicant";
+  activityAt: string;
+  branchId: string | null;
+  branchName: string | null;
+}
+
+export async function getMembershipApplicationDraft(user: AppUser) {
+  await ensureDatabase();
+  const draft = await getDb().membershipApplicationDraft.findFirst({
+    where: { userId: user.id, personId: user.profileId },
+    include: {
+      documents: {
+        where: { status: "active", archivedAt: null },
+        select: { id: true, originalName: true, mimeType: true, sizeBytes: true },
+        orderBy: { createdAt: "asc" },
+      },
+    },
+  });
+  if (!draft) return null;
   return {
-    clause: `${alias}.branch_id IN (${branches.map(() => "?").join(",")})`,
-    params: branches,
+    id: draft.id,
+    surname: draft.surname ?? "",
+    givenName: draft.givenName ?? "",
+    patronymic: draft.patronymic ?? "",
+    birthDate: draft.birthDate?.toISOString().slice(0, 10) ?? "",
+    regionCode: draft.regionCode ?? "",
+    cityDistrict: draft.cityDistrict ?? "",
+    phone: draft.phone ?? "",
+    workplace: draft.workplace ?? "",
+    position: draft.position ?? "",
+    educationLevelCode: draft.educationLevelCode ?? "",
+    educationInstitution: draft.educationInstitution ?? "",
+    educationProgram: draft.educationProgram ?? "",
+    mathSpecialization: draft.mathSpecialization ?? "",
+    achievements: draft.achievements ?? "",
+    joiningPurpose: draft.joiningPurpose ?? "",
+    source: draft.source,
+    termsAccepted: draft.termsAccepted,
+    privacyAccepted: draft.privacyAccepted,
+    status: draft.status,
+    submittedApplicationId: draft.submittedApplicationId,
+    updatedAt: draft.updatedAt.toISOString(),
+    documents: draft.documents,
   };
+}
+
+function scopedBranchIds(user: AppUser) {
+  return isFullAccess(user) ? null : branchScopeIds(user);
+}
+
+function filteredBranchIds(user: AppUser, requestedBranchId?: string) {
+  const scoped = scopedBranchIds(user);
+  if (!requestedBranchId) return scoped;
+  return scoped ? scoped.filter((branchId) => branchId === requestedBranchId) : [requestedBranchId];
+}
+
+function date(value: Date | null) {
+  return value?.toISOString() ?? null;
 }
 
 export async function getDashboardMetrics(user: AppUser): Promise<DashboardMetrics> {
   await ensureDatabase();
-  const database = getRawDb();
-  const profileScope = scopedWhere(user, "p");
-  const applicationScope = scopedWhere(user, "a");
-  const [registered, applications] = await database.batch([
-    database.prepare(
-      `SELECT COUNT(*) AS registeredUsers,
-              SUM(CASE WHEN p.membership_status = 'applicant' THEN 1 ELSE 0 END) AS applicants,
-              SUM(CASE WHEN p.membership_status = 'reserve' THEN 1 ELSE 0 END) AS reserve,
-              SUM(CASE WHEN p.membership_status = 'member' THEN 1 ELSE 0 END) AS members,
-              SUM(CASE WHEN p.membership_status = 'rejected' THEN 1 ELSE 0 END) AS rejected
-       FROM person_profiles p WHERE p.archived_at IS NULL AND ${profileScope.clause}`,
-    ).bind(...profileScope.params),
-    database.prepare(
-      `SELECT SUM(CASE WHEN a.status = 'awaiting_review' THEN 1 ELSE 0 END) AS awaitingReview
-       FROM membership_applications a WHERE a.archived_at IS NULL AND ${applicationScope.clause}`,
-    ).bind(...applicationScope.params),
+  const database = getDb();
+  const branches = scopedBranchIds(user);
+  const profileWhere = { archivedAt: null, membershipStatus: { not: "rejected" }, ...(branches ? { branchId: { in: branches } } : {}) };
+  const applicationWhere = { archivedAt: null, ...(branches ? { branchId: { in: branches } } : {}) };
+  const [registeredUsers, applicants, awaitingReview, reserve, members, rejected] = await Promise.all([
+    database.personProfile.count({ where: { ...profileWhere, membershipStatus: "registered_user" } }),
+    database.personProfile.count({ where: { ...profileWhere, membershipStatus: "applicant" } }),
+    database.membershipApplication.count({ where: { ...applicationWhere, status: "awaiting_review" } }),
+    database.personProfile.count({ where: { ...profileWhere, membershipStatus: "reserve" } }),
+    database.personProfile.count({ where: { ...profileWhere, membershipStatus: "member" } }),
+    database.membershipApplication.count({ where: { ...applicationWhere, status: "rejected" } }),
   ]);
-  const profileRow = (registered.results?.[0] ?? {}) as Partial<DashboardMetrics>;
-  const applicationRow = (applications.results?.[0] ?? {}) as Partial<DashboardMetrics>;
-  return {
-    registeredUsers: Number(profileRow.registeredUsers ?? 0),
-    applicants: Number(profileRow.applicants ?? 0),
-    awaitingReview: Number(applicationRow.awaitingReview ?? 0),
-    reserve: Number(profileRow.reserve ?? 0),
-    members: Number(profileRow.members ?? 0),
-    rejected: Number(profileRow.rejected ?? 0),
-  };
+  return { registeredUsers, applicants, awaitingReview, reserve, members, rejected };
 }
 
-export async function listApplications(user: AppUser, limit = 50) {
+export async function listApplicationCandidates(
+  user: AppUser,
+  limit = 50,
+  filters: { membershipStatus?: "registered_user" | "applicant"; branchId?: string } = {},
+): Promise<ApplicationCandidateListRow[]> {
   await ensureDatabase();
-  const database = getRawDb();
-  const scope = scopedWhere(user, "a");
-  const result = await database
-    .prepare(
-      `SELECT a.id, p.full_name AS fullName, p.email, p.city_district AS cityDistrict,
-              p.workplace, p.position, a.status, a.submitted_at AS submittedAt,
-              a.branch_id AS branchId, b.name AS branchName
-       FROM membership_applications a
-       JOIN person_profiles p ON p.id = a.person_id
-       JOIN branches b ON b.id = a.branch_id
-       WHERE a.archived_at IS NULL AND ${scope.clause}
-       ORDER BY CASE a.status WHEN 'awaiting_review' THEN 0 WHEN 'reserve' THEN 1 ELSE 2 END,
-                a.submitted_at DESC LIMIT ?`,
-    )
-    .bind(...scope.params, limit)
-    .all<ApplicationListRow>();
-  return result.results;
+  const branches = filteredBranchIds(user, filters.branchId);
+  const profiles = await getDb().personProfile.findMany({
+    where: {
+      archivedAt: null,
+      membershipStatus: filters.membershipStatus ?? { in: ["registered_user", "applicant"] },
+      ...(branches ? { branchId: { in: branches } } : {}),
+    },
+    include: {
+      user: { select: { createdAt: true } },
+      branch: { select: { id: true, name: true } },
+      applications: {
+        where: { archivedAt: null },
+        select: { id: true, submittedAt: true },
+        orderBy: { submittedAt: "desc" },
+        take: 1,
+      },
+    },
+    orderBy: [{ membershipStatus: "asc" }, { updatedAt: "desc" }],
+    take: limit,
+  });
+  return profiles.map((profile) => ({
+    personId: profile.id,
+    applicationId: profile.applications[0]?.id ?? null,
+    fullName: profile.fullName,
+    email: profile.email,
+    cityDistrict: profile.cityDistrict,
+    workplace: profile.workplace,
+    position: profile.position,
+    membershipStatus: profile.membershipStatus as "registered_user" | "applicant",
+    activityAt: (profile.applications[0]?.submittedAt ?? profile.user?.createdAt ?? profile.createdAt).toISOString(),
+    branchId: profile.branchId,
+    branchName: profile.branch?.name ?? null,
+  }));
+}
+
+export async function listApplications(
+  user: AppUser,
+  limit = 50,
+  filters: { status?: string; branchId?: string } = {},
+): Promise<ApplicationListRow[]> {
+  await ensureDatabase();
+  const branches = filteredBranchIds(user, filters.branchId);
+  const applications = await getDb().membershipApplication.findMany({
+    where: {
+      archivedAt: null,
+      person: { archivedAt: null },
+      ...(branches ? { branchId: { in: branches } } : {}),
+      ...(filters.status ? { status: filters.status } : {}),
+    },
+    include: { person: true, branch: true },
+    orderBy: { submittedAt: "desc" },
+  });
+  const priority: Record<string, number> = { awaiting_review: 0, reserve: 1 };
+  return applications
+    .sort((left, right) => (priority[left.status] ?? 2) - (priority[right.status] ?? 2) || right.submittedAt.getTime() - left.submittedAt.getTime())
+    .slice(0, limit)
+    .map((application) => ({
+      id: application.id,
+      fullName: application.person.fullName,
+      email: application.person.email,
+      cityDistrict: application.person.cityDistrict,
+      workplace: application.person.workplace,
+      position: application.person.position,
+      status: application.status,
+      submittedAt: application.submittedAt.toISOString(),
+      branchId: application.branchId,
+      branchName: application.branch.name,
+    }));
 }
 
 export interface ApplicationDetail extends ApplicationListRow {
   personId: string;
+  birthDate: string | null;
   birthYear: number | null;
   phone: string;
   education: string | null;
+  educationLevelCode: string | null;
+  educationInstitution: string | null;
+  educationProgram: string | null;
   professionalExperience: string | null;
   mathSpecialization: string | null;
   achievements: string | null;
+  joiningPurpose: string | null;
   biography: string | null;
   decisionReason: string | null;
   reviewedAt: string | null;
@@ -103,136 +209,569 @@ export interface ApplicationDetail extends ApplicationListRow {
 
 export async function getApplicationDetail(user: AppUser, id: string) {
   await ensureDatabase();
-  const database = getRawDb();
-  const scope = scopedWhere(user, "a");
-  const application = await database
-    .prepare(
-      `SELECT a.id, a.person_id AS personId, p.full_name AS fullName, p.birth_year AS birthYear,
-              p.email, p.phone, p.city_district AS cityDistrict, p.workplace, p.position,
-              p.education, p.professional_experience AS professionalExperience,
-              p.math_specialization AS mathSpecialization, p.achievements, p.biography,
-              a.status, a.submitted_at AS submittedAt, a.reviewed_at AS reviewedAt,
-              a.decision_reason AS decisionReason, a.source, a.branch_id AS branchId,
-              b.name AS branchName
-       FROM membership_applications a
-       JOIN person_profiles p ON p.id = a.person_id
-       JOIN branches b ON b.id = a.branch_id
-       WHERE a.id = ? AND a.archived_at IS NULL AND ${scope.clause}`,
-    )
-    .bind(id, ...scope.params)
-    .first<ApplicationDetail>();
+  const branches = scopedBranchIds(user);
+  const application = await getDb().membershipApplication.findFirst({
+    where: { id, archivedAt: null, ...(branches ? { branchId: { in: branches } } : {}) },
+    include: {
+      person: true,
+      branch: true,
+      documents: { where: { archivedAt: null }, orderBy: { createdAt: "asc" } },
+      notes: {
+        where: { archivedAt: null, ...(isFullAccess(user) ? {} : { visibility: "branch" }) },
+        include: { author: { include: { profile: true } } },
+        orderBy: { createdAt: "desc" },
+      },
+      statusHistory: {
+        include: { changer: { include: { profile: true } } },
+        orderBy: { createdAt: "desc" },
+      },
+    },
+  });
   if (!application) return null;
 
-  const [documents, notes, history] = await Promise.all([
-    database.prepare(
-      `SELECT id, original_name AS originalName, mime_type AS mimeType, size_bytes AS sizeBytes,
-              created_at AS createdAt FROM uploaded_documents
-       WHERE application_id = ? AND archived_at IS NULL ORDER BY created_at`,
-    ).bind(id).all<{ id: string; originalName: string; mimeType: string; sizeBytes: number; createdAt: string }>(),
-    database.prepare(
-      `SELECT n.id, n.note, n.visibility, n.created_at AS createdAt, p.full_name AS authorName
-       FROM internal_notes n JOIN person_profiles p ON p.user_id = n.author_user_id
-       WHERE n.application_id = ? AND n.archived_at IS NULL
-         AND (n.visibility = 'branch' OR ? = 1)
-       ORDER BY n.created_at DESC`,
-    ).bind(id, isFullAccess(user) ? 1 : 0).all<{ id: string; note: string; visibility: string; createdAt: string; authorName: string }>(),
-    database.prepare(
-      `SELECT previous_status AS previousStatus, new_status AS newStatus, reason,
-              visibility, created_at AS createdAt
-       FROM membership_status_history WHERE application_id = ?
-         AND (visibility = 'member' OR ? = 1)
-       ORDER BY created_at DESC`,
-    ).bind(id, isFullAccess(user) ? 1 : 0).all<{ previousStatus: string | null; newStatus: string; reason: string | null; visibility: string; createdAt: string }>(),
-  ]);
+  const detail: ApplicationDetail = {
+    id: application.id,
+    personId: application.personId,
+    fullName: application.person.fullName,
+    birthDate: date(application.person.birthDate),
+    birthYear: application.person.birthYear,
+    email: application.person.email,
+    phone: application.person.phone,
+    cityDistrict: application.person.cityDistrict,
+    workplace: application.person.workplace,
+    position: application.person.position,
+    education: application.person.education,
+    educationLevelCode: application.person.educationLevelCode,
+    educationInstitution: application.person.educationInstitution,
+    educationProgram: application.person.educationProgram,
+    professionalExperience: application.person.professionalExperience,
+    mathSpecialization: application.person.mathSpecialization,
+    achievements: application.person.achievements,
+    joiningPurpose: application.joiningPurpose,
+    biography: application.person.biography,
+    status: application.status,
+    submittedAt: application.submittedAt.toISOString(),
+    reviewedAt: date(application.reviewedAt),
+    decisionReason: application.decisionReason,
+    source: application.source,
+    branchId: application.branchId,
+    branchName: application.branch.name,
+  };
 
-  return { application, documents: documents.results, notes: notes.results, history: history.results };
+  return {
+    application: detail,
+    documents: application.documents.map((document) => ({ id: document.id, originalName: document.originalName, mimeType: document.mimeType, sizeBytes: document.sizeBytes, status: document.status, createdAt: document.createdAt.toISOString() })),
+    notes: application.notes.map((note) => ({ id: note.id, note: note.note, visibility: note.visibility, createdAt: note.createdAt.toISOString(), authorName: note.author.profile?.fullName ?? note.author.email })),
+    history: application.statusHistory.map((history) => ({
+      previousStatus: history.previousStatus,
+      newStatus: history.newStatus,
+      reason: history.reason,
+      visibility: history.visibility,
+      createdAt: history.createdAt.toISOString(),
+      actorName: history.changer?.profile?.fullName ?? history.changer?.email ?? "Жүйе",
+    })),
+  };
 }
 
-export async function listMembers(user: AppUser, limit = 100) {
+export interface MemberSearchFilters {
+  categoryId?: string;
+  branchId?: string;
+  membershipStatus?: string;
+  query?: string;
+  workplace?: string;
+  position?: string;
+  cityDistrict?: string;
+  minimumAge?: number;
+  ageUnder?: number;
+}
+
+function ageCutoff(age: number) {
+  const today = new Date();
+  return new Date(Date.UTC(today.getUTCFullYear() - age, today.getUTCMonth(), today.getUTCDate()));
+}
+
+function searchVariants(value: string) {
+  const lower = value.toLocaleLowerCase("kk-KZ");
+  const upper = value.toLocaleUpperCase("kk-KZ");
+  const title = lower ? `${lower[0].toLocaleUpperCase("kk-KZ")}${lower.slice(1)}` : lower;
+  return [...new Set([value, lower, upper, title])];
+}
+
+export async function listMembers(user: AppUser, filters: MemberSearchFilters = {}, limit = 500) {
   await ensureDatabase();
-  const database = getRawDb();
-  const scope = scopedWhere(user, "p");
-  const result = await database.prepare(
-    `SELECT p.id, p.full_name AS fullName, p.email, p.phone, p.workplace, p.position,
-            p.membership_status AS membershipStatus, p.membership_started_at AS membershipStartedAt,
-            p.branch_id AS branchId, b.name AS branchName
-     FROM person_profiles p LEFT JOIN branches b ON b.id = p.branch_id
-     WHERE p.archived_at IS NULL AND ${scope.clause}
-     ORDER BY p.full_name LIMIT ?`,
-  ).bind(...scope.params, limit).all<{
-    id: string; fullName: string; email: string; phone: string; workplace: string | null;
-    position: string | null; membershipStatus: string; membershipStartedAt: string | null;
-    branchId: string | null; branchName: string | null;
-  }>();
-  return result.results;
+  const branches = filteredBranchIds(user, filters.branchId);
+  const query = filters.query?.trim().slice(0, 120);
+  const workplace = filters.workplace?.trim().slice(0, 120);
+  const position = filters.position?.trim().slice(0, 120);
+  const cityDistrict = filters.cityDistrict?.trim().slice(0, 120);
+  const minimumAge = filters.minimumAge && filters.minimumAge >= 18 && filters.minimumAge <= 100 ? filters.minimumAge : undefined;
+  const ageUnder = filters.ageUnder && filters.ageUnder >= 19 && filters.ageUnder <= 101 ? filters.ageUnder : undefined;
+  const birthDate = minimumAge || ageUnder ? {
+    ...(minimumAge ? { lte: ageCutoff(minimumAge) } : {}),
+    ...(ageUnder ? { gt: ageCutoff(ageUnder) } : {}),
+  } : undefined;
+  const textFilters: Prisma.PersonProfileWhereInput[] = [];
+  if (workplace) textFilters.push({ OR: searchVariants(workplace).map((value) => ({ workplace: { contains: value, mode: "insensitive" } })) });
+  if (position) textFilters.push({ OR: searchVariants(position).map((value) => ({ position: { contains: value, mode: "insensitive" } })) });
+  if (cityDistrict) textFilters.push({ OR: searchVariants(cityDistrict).map((value) => ({ cityDistrict: { contains: value, mode: "insensitive" } })) });
+  if (query) {
+    const variants = searchVariants(query);
+    textFilters.push({ OR: variants.flatMap((value) => [
+      { fullName: { contains: value, mode: "insensitive" as const } },
+      { workplace: { contains: value, mode: "insensitive" as const } },
+      { position: { contains: value, mode: "insensitive" as const } },
+      { cityDistrict: { contains: value, mode: "insensitive" as const } },
+      { mathSpecialization: { contains: value, mode: "insensitive" as const } },
+      { educationInstitution: { contains: value, mode: "insensitive" as const } },
+    ]) });
+  }
+  const profiles = await getDb().personProfile.findMany({
+    where: {
+      archivedAt: null,
+      membershipStatus: "member",
+      ...(branches ? { branchId: { in: branches } } : {}),
+      ...(filters.categoryId ? { professionalCategories: { some: { categoryId: filters.categoryId, removedAt: null } } } : {}),
+      ...(birthDate ? { birthDate } : {}),
+      ...(textFilters.length ? { AND: textFilters } : {}),
+    },
+    include: {
+      branch: true,
+      professionalCategories: {
+        where: { removedAt: null },
+        include: { category: true },
+        orderBy: { category: { sortOrder: "asc" } },
+      },
+    },
+    orderBy: { fullName: "asc" },
+    take: limit,
+  });
+  return profiles.map((profile) => ({
+    id: profile.id,
+    userId: profile.userId,
+    fullName: profile.fullName,
+    email: profile.email,
+    phone: profile.phone,
+    birthDate: date(profile.birthDate),
+    birthYear: profile.birthYear,
+    cityDistrict: profile.cityDistrict,
+    workplace: profile.workplace,
+    position: profile.position,
+    mathSpecialization: profile.mathSpecialization,
+    membershipStatus: profile.membershipStatus,
+    membershipStartedAt: date(profile.membershipStartedAt),
+    branchId: profile.branchId,
+    branchName: profile.branch?.name ?? null,
+    professionalCategories: profile.professionalCategories.map((assignment) => ({
+      id: assignment.category.id,
+      name: assignment.category.name,
+      status: assignment.category.status,
+    })),
+  }));
+}
+
+export async function getMemberDetail(user: AppUser, id: string) {
+  await ensureDatabase();
+  const branches = scopedBranchIds(user);
+  const profile = await getDb().personProfile.findFirst({
+    where: { id, archivedAt: null, membershipStatus: { not: "rejected" }, ...(branches ? { branchId: { in: branches } } : {}) },
+    include: {
+      user: { select: { id: true, emailVerifiedAt: true, status: true, lastLoginAt: true, createdAt: true } },
+      branch: true,
+      applications: { where: { archivedAt: null }, orderBy: { submittedAt: "desc" } },
+      documents: { where: { archivedAt: null }, orderBy: { createdAt: "desc" } },
+      statusHistory: {
+        include: { changer: { include: { profile: true } } },
+        orderBy: { createdAt: "desc" },
+      },
+      professionalCategories: {
+        where: { removedAt: null },
+        include: { category: true },
+        orderBy: { category: { sortOrder: "asc" } },
+      },
+      departmentAssignments: {
+        where: { endedAt: null, department: { archivedAt: null } },
+        include: { department: true },
+        orderBy: { assignedAt: "asc" },
+      },
+      activities: {
+        include: {
+          event: { select: { id: true, slug: true, title: true, startAt: true, status: true } },
+          project: { select: { id: true, title: true, status: true } },
+        },
+        orderBy: { occurredAt: "desc" },
+      },
+    },
+  });
+  if (!profile) return null;
+  return {
+    id: profile.id,
+    userId: profile.userId,
+    fullName: profile.fullName,
+    surname: profile.surname,
+    givenName: profile.givenName,
+    patronymic: profile.patronymic,
+    birthDate: date(profile.birthDate),
+    birthYear: profile.birthYear,
+    regionCode: profile.regionCode,
+    cityDistrict: profile.cityDistrict,
+    phone: profile.phone,
+    email: profile.email,
+    workplace: profile.workplace,
+    position: profile.position,
+    education: profile.education,
+    educationLevelCode: profile.educationLevelCode,
+    educationInstitution: profile.educationInstitution,
+    educationProgram: profile.educationProgram,
+    professionalExperience: profile.professionalExperience,
+    mathSpecialization: profile.mathSpecialization,
+    achievements: profile.achievements,
+    biography: profile.biography,
+    membershipStatus: profile.membershipStatus,
+    membershipStartedAt: date(profile.membershipStartedAt),
+    branchId: profile.branchId,
+    branchName: profile.branch?.name ?? null,
+    account: profile.user ? {
+      status: profile.user.status,
+      emailVerifiedAt: date(profile.user.emailVerifiedAt),
+      lastLoginAt: date(profile.user.lastLoginAt),
+      createdAt: profile.user.createdAt.toISOString(),
+    } : null,
+    applications: profile.applications.map((application) => ({
+      id: application.id,
+      status: application.status,
+      submittedAt: application.submittedAt.toISOString(),
+    })),
+    documents: profile.documents.map((document) => ({
+      id: document.id,
+      originalName: document.originalName,
+      mimeType: document.mimeType,
+      sizeBytes: document.sizeBytes,
+      status: document.status,
+      applicationId: document.applicationId,
+      createdAt: document.createdAt.toISOString(),
+    })),
+    history: profile.statusHistory.map((entry) => ({
+      previousStatus: entry.previousStatus,
+      newStatus: entry.newStatus,
+      reason: entry.reason,
+      createdAt: entry.createdAt.toISOString(),
+      actorName: entry.changer?.profile?.fullName ?? entry.changer?.email ?? "Жүйе",
+    })),
+    professionalCategories: profile.professionalCategories.map((assignment) => ({
+      id: assignment.category.id,
+      name: assignment.category.name,
+      status: assignment.category.status,
+    })),
+    departments: profile.departmentAssignments.map((assignment) => assignment.department.nameKk),
+    activities: profile.activities.map((activity) => ({
+      id: activity.id, title: activity.title, description: activity.description, occurredAt: activity.occurredAt.toISOString(),
+      status: activity.status, activityType: activity.activityType,
+      eventId: activity.eventId, eventSlug: activity.event?.slug ?? null, eventStatus: activity.event?.status ?? null,
+      projectId: activity.projectId, projectStatus: activity.project?.status ?? null,
+    })),
+  };
 }
 
 export async function getOwnProfile(user: AppUser) {
   await ensureDatabase();
-  return getRawDb().prepare(
-    `SELECT p.*, b.name AS branchName FROM person_profiles p
-     LEFT JOIN branches b ON b.id = p.branch_id WHERE p.id = ? AND p.archived_at IS NULL`,
-  ).bind(user.profileId).first<Record<string, string | number | null> & { branchName: string | null }>();
+  const profile = await getDb().personProfile.findFirst({
+    where: { id: user.profileId, archivedAt: null },
+    include: {
+      branch: true,
+      documents: { where: { status: { in: ["active", "removal_requested"] }, archivedAt: null }, orderBy: { createdAt: "asc" } },
+      statusHistory: { where: { visibility: "member" }, orderBy: { createdAt: "asc" } },
+      professionalCategories: {
+        where: { removedAt: null },
+        include: { category: true },
+        orderBy: { category: { sortOrder: "asc" } },
+      },
+      activities: {
+        where: { status: "ACTIVE" },
+        include: {
+          event: { select: { slug: true, title: true, startAt: true, status: true } },
+          project: { select: { id: true, title: true, status: true } },
+        },
+        orderBy: { occurredAt: "desc" },
+      },
+      eventRegistrations: {
+        where: { registrationStatus: "REGISTERED" },
+        include: { event: { select: { slug: true, title: true, startAt: true, status: true } }, attendance: true, seatingUnit: true },
+        orderBy: { registeredAt: "desc" },
+      },
+    },
+  });
+  if (!profile) return null;
+  return {
+    id: profile.id,
+    full_name: profile.fullName,
+    surname: profile.surname,
+    given_name: profile.givenName,
+    patronymic: profile.patronymic,
+    birth_date: date(profile.birthDate),
+    birth_year: profile.birthYear,
+    region_code: profile.regionCode,
+    city_district: profile.cityDistrict,
+    phone: profile.phone,
+    email: profile.email,
+    workplace: profile.workplace,
+    position: profile.position,
+    education: profile.education,
+    education_level_code: profile.educationLevelCode,
+    education_institution: profile.educationInstitution,
+    education_program: profile.educationProgram,
+    professional_experience: profile.professionalExperience,
+    math_specialization: profile.mathSpecialization,
+    achievements: profile.achievements,
+    biography: profile.biography,
+    membership_status: profile.membershipStatus,
+    membership_started_at: date(profile.membershipStartedAt),
+    branchName: profile.branch?.name ?? null,
+    professionalCategories: profile.professionalCategories.map((assignment) => ({
+      id: assignment.category.id,
+      name: assignment.category.name,
+      status: assignment.category.status,
+    })),
+    activities: profile.activities.map((activity) => ({
+      id: activity.id, title: activity.title, description: activity.description, occurredAt: activity.occurredAt.toISOString(),
+      activityType: activity.activityType,
+      eventSlug: activity.event?.slug ?? null, eventStatus: activity.event?.status ?? null,
+      projectId: activity.projectId, projectStatus: activity.project?.status ?? null,
+    })),
+    eventRegistrations: profile.eventRegistrations.map((registration) => ({
+      id: registration.id, eventTitle: registration.event.title, eventSlug: registration.event.slug,
+      startAt: registration.event.startAt.toISOString(), eventStatus: registration.event.status,
+      attendanceStatus: registration.attendance?.status ?? "PENDING",
+      seat: registration.seatingUnit ? `${registration.seatingUnit.label}-${registration.seatNumber}` : null,
+    })),
+    documents: profile.documents.map((document) => ({
+      id: document.id,
+      originalName: document.originalName,
+      mimeType: document.mimeType,
+      sizeBytes: document.sizeBytes,
+      status: document.status,
+      applicationId: document.applicationId,
+      draftId: document.draftId,
+      createdAt: document.createdAt.toISOString(),
+    })),
+    visibleHistory: profile.statusHistory.map((history) => ({ newStatus: history.newStatus, createdAt: history.createdAt.toISOString() })),
+  };
 }
 
-export async function listBranches() {
+export async function listBranches(user?: AppUser) {
   await ensureDatabase();
-  const result = await getRawDb().prepare(
-    `SELECT b.id, b.name, b.region_code AS regionCode, b.region_name AS regionName, b.status,
-            p.full_name AS directorName,
-            SUM(CASE WHEN members.membership_status = 'member' THEN 1 ELSE 0 END) AS memberCount,
-            SUM(CASE WHEN members.membership_status = 'applicant' THEN 1 ELSE 0 END) AS applicantCount,
-            SUM(CASE WHEN members.membership_status = 'reserve' THEN 1 ELSE 0 END) AS reserveCount
-     FROM branches b
-     LEFT JOIN person_profiles p ON p.id = b.director_profile_id
-     LEFT JOIN person_profiles members ON members.branch_id = b.id AND members.archived_at IS NULL
-     WHERE b.archived_at IS NULL
-     GROUP BY b.id ORDER BY b.region_name`,
-  ).all<{
-    id: string; name: string; regionCode: string; regionName: string; status: string;
-    directorName: string | null; memberCount: number; applicantCount: number; reserveCount: number;
-  }>();
-  return result.results;
+  const scopedIds = user && !isFullAccess(user) ? branchScopeIds(user) : null;
+  const branches = await getDb().branch.findMany({
+    where: { archivedAt: null, ...(scopedIds ? { id: { in: scopedIds } } : {}) },
+    include: { directorProfile: true, profiles: { where: { archivedAt: null }, select: { membershipStatus: true } } },
+    orderBy: { regionName: "asc" },
+  });
+  return branches.map((branch) => ({
+    id: branch.id,
+    name: branch.name,
+    regionCode: branch.regionCode,
+    regionName: branch.regionName,
+    status: branch.status,
+    directorName: branch.directorProfile?.fullName ?? null,
+    memberCount: branch.profiles.filter((profile) => profile.membershipStatus === "member").length,
+    applicantCount: branch.profiles.filter((profile) => profile.membershipStatus === "applicant").length,
+    reserveCount: branch.profiles.filter((profile) => profile.membershipStatus === "reserve").length,
+  }));
+}
+
+export async function listDocumentRemovalRequests() {
+  await ensureDatabase();
+  const database = getDb();
+  const documents = await database.uploadedDocument.findMany({
+    where: { status: "removal_requested", archivedAt: null },
+    include: { owner: { include: { branch: true } }, application: true },
+    orderBy: { updatedAt: "asc" },
+  });
+  const audits = documents.length ? await database.auditLog.findMany({
+    where: { actionType: "document.removal_requested", targetEntity: "uploaded_document", targetEntityId: { in: documents.map((document) => document.id) } },
+    orderBy: { createdAt: "desc" },
+  }) : [];
+  return documents.map((document) => ({
+    id: document.id,
+    originalName: document.originalName,
+    mimeType: document.mimeType,
+    sizeBytes: document.sizeBytes,
+    requestedAt: document.updatedAt.toISOString(),
+    ownerPersonId: document.ownerPersonId,
+    ownerName: document.owner.fullName,
+    ownerEmail: document.owner.email,
+    branchName: document.owner.branch?.name ?? null,
+    applicationId: document.applicationId,
+    reason: audits.find((audit) => audit.targetEntityId === document.id)?.reason ?? null,
+  }));
+}
+
+export async function listProfessionalProfiles(user: AppUser, filters: { categoryId?: string; branchId?: string } = {}) {
+  await ensureDatabase();
+  const nationwide = isNationwideProfessionalAccess(user);
+  const departmentIds = departmentScopeIds(user);
+  const profiles = await getDb().personProfile.findMany({
+    where: {
+      membershipStatus: "member",
+      archivedAt: null,
+      ...(filters.branchId ? { branchId: filters.branchId } : {}),
+      ...(filters.categoryId ? { professionalCategories: { some: { categoryId: filters.categoryId, removedAt: null } } } : {}),
+      ...(nationwide ? {} : {
+        departmentAssignments: {
+          some: { departmentId: { in: departmentIds }, endedAt: null, department: { archivedAt: null } },
+        },
+      }),
+    },
+    include: {
+      branch: { select: { regionName: true } },
+      departmentAssignments: {
+        where: {
+          endedAt: null,
+          department: { archivedAt: null },
+          ...(nationwide ? {} : { departmentId: { in: departmentIds } }),
+        },
+        include: { department: { select: { id: true, nameKk: true } } },
+      },
+      professionalCategories: {
+        where: { removedAt: null },
+        include: { category: true },
+        orderBy: { category: { sortOrder: "asc" } },
+      },
+    },
+    orderBy: { fullName: "asc" },
+  });
+  return profiles.map((profile) => ({
+    id: profile.id,
+    fullName: profile.fullName,
+    workplace: profile.workplace,
+    position: profile.position,
+    specialization: profile.mathSpecialization,
+    regionName: profile.branch?.regionName ?? null,
+    departments: profile.departmentAssignments.map((assignment) => assignment.department.nameKk),
+    professionalCategories: profile.professionalCategories.map((assignment) => ({
+      id: assignment.category.id,
+      name: assignment.category.name,
+      status: assignment.category.status,
+    })),
+  }));
+}
+
+export async function listProfessionalCategories(options: { activeOnly?: boolean } = {}) {
+  await ensureDatabase();
+  const rows = await getDb().professionalCategory.findMany({
+    where: options.activeOnly ? { status: "active" } : undefined,
+    orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+  });
+  return rows.map((category) => ({
+    id: category.id,
+    name: category.name,
+    description: category.description,
+    sortOrder: category.sortOrder,
+    status: category.status,
+    createdAt: category.createdAt.toISOString(),
+    updatedAt: category.updatedAt.toISOString(),
+  }));
+}
+
+export async function getProfessionalCategoryAdminData() {
+  await ensureDatabase();
+  const rows = await getDb().professionalCategory.findMany({
+    include: { assignments: { select: { personId: true, removedAt: true } } },
+    orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+  });
+  return rows.map((category) => ({
+    id: category.id,
+    name: category.name,
+    description: category.description,
+    sortOrder: category.sortOrder,
+    status: category.status,
+    activeAssignmentCount: category.assignments.filter((assignment) => assignment.removedAt === null).length,
+    historicalPersonCount: new Set(category.assignments.map((assignment) => assignment.personId)).size,
+    createdAt: category.createdAt.toISOString(),
+    updatedAt: category.updatedAt.toISOString(),
+  }));
 }
 
 export async function listAuditLogs(limit = 80) {
   await ensureDatabase();
-  const result = await getRawDb().prepare(
-    `SELECT a.id, a.action_type AS actionType, a.target_entity AS targetEntity,
-            a.target_entity_id AS targetEntityId, a.previous_value AS previousValue,
-            a.new_value AS newValue, a.reason, a.ip_address AS ipAddress,
-            a.session_id AS sessionId, a.created_at AS createdAt,
-            p.full_name AS actorName
-     FROM audit_logs a LEFT JOIN person_profiles p ON p.user_id = a.actor_user_id
-     ORDER BY a.created_at DESC LIMIT ?`,
-  ).bind(limit).all<{
-    id: string; actionType: string; targetEntity: string; targetEntityId: string;
-    previousValue: string | null; newValue: string | null; reason: string | null;
-    ipAddress: string | null; sessionId: string | null; createdAt: string; actorName: string | null;
-  }>();
-  return result.results;
+  const logs = await getDb().auditLog.findMany({
+    include: { actor: { include: { profile: true } } },
+    orderBy: { createdAt: "desc" },
+    take: limit,
+  });
+  return logs.map((log) => ({
+    id: log.id,
+    actionType: log.actionType,
+    targetEntity: log.targetEntity,
+    targetEntityId: log.targetEntityId,
+    previousValue: log.previousValue,
+    newValue: log.newValue,
+    reason: log.reason,
+    ipAddress: log.ipAddress,
+    sessionId: log.sessionId,
+    createdAt: log.createdAt.toISOString(),
+    actorName: log.actor?.profile?.fullName ?? null,
+  }));
 }
 
 export async function listUsersAndRoles() {
   await ensureDatabase();
-  const database = getRawDb();
-  const [users, assignments, rolesList] = await Promise.all([
-    database.prepare(
-      `SELECT u.id, u.email, p.full_name AS fullName, p.membership_status AS membershipStatus,
-              p.branch_id AS branchId, b.name AS branchName
-       FROM users u JOIN person_profiles p ON p.user_id = u.id
-       LEFT JOIN branches b ON b.id = p.branch_id
-       WHERE u.archived_at IS NULL ORDER BY p.full_name`,
-    ).all<{ id: string; email: string; fullName: string; membershipStatus: string; branchId: string | null; branchName: string | null }>(),
-    database.prepare(
-      `SELECT ur.id, ur.user_id AS userId, r.slug, r.name_kk AS nameKk, ur.scope_type AS scopeType,
-              ur.scope_id AS scopeId FROM user_roles ur JOIN roles r ON r.id = ur.role_id
-       WHERE ur.revoked_at IS NULL ORDER BY r.name_kk`,
-    ).all<{ id: string; userId: string; slug: string; nameKk: string; scopeType: string; scopeId: string | null }>(),
-    database.prepare("SELECT id, slug, name_kk AS nameKk, access_level AS accessLevel FROM roles ORDER BY access_level, name_kk")
-      .all<{ id: string; slug: string; nameKk: string; accessLevel: string }>(),
+  const database = getDb();
+  const [userRows, assignmentRows, roleRows, departmentRows, departmentAssignmentRows] = await Promise.all([
+    database.user.findMany({ where: { archivedAt: null }, include: { profile: { include: { branch: true } } }, orderBy: { profile: { fullName: "asc" } } }),
+    database.userRole.findMany({ where: { revokedAt: null }, include: { role: true }, orderBy: { role: { nameKk: "asc" } } }),
+    database.role.findMany({ orderBy: [{ accessLevel: "asc" }, { nameKk: "asc" }] }),
+    database.department.findMany({
+      where: { archivedAt: null },
+      include: {
+        parent: { select: { id: true, nameKk: true } },
+        _count: {
+          select: {
+            children: { where: { archivedAt: null } },
+            assignments: { where: { endedAt: null } },
+          },
+        },
+      },
+      orderBy: [{ sortOrder: "asc" }, { nameKk: "asc" }],
+    }),
+    database.personDepartmentAssignment.findMany({
+      where: { endedAt: null },
+      include: { department: true },
+      orderBy: { assignedAt: "asc" },
+    }),
   ]);
-  return { users: users.results, assignments: assignments.results, roles: rolesList.results };
+  return {
+    users: userRows.filter((user) => user.profile).map((user) => ({ id: user.id, personId: user.profile!.id, email: user.email, fullName: user.profile!.fullName, membershipStatus: user.profile!.membershipStatus, branchId: user.profile!.branchId, branchName: user.profile!.branch?.name ?? null })),
+    assignments: assignmentRows.map((assignment) => ({ id: assignment.id, userId: assignment.userId, slug: assignment.role.slug, nameKk: assignment.role.nameKk, scopeType: assignment.scopeType, scopeId: assignment.scopeId })),
+    roles: roleRows.map((role) => ({ id: role.id, slug: role.slug, nameKk: role.nameKk, accessLevel: role.accessLevel })),
+    departments: departmentRows.map((department) => ({
+      id: department.id,
+      nameKk: department.nameKk,
+      unitType: department.unitType,
+      parentId: department.parentId,
+      parentName: department.parent?.nameKk ?? null,
+      description: department.description,
+      sortOrder: department.sortOrder,
+      activeChildCount: department._count.children,
+      activeMemberCount: department._count.assignments,
+      activeRoleCount: assignmentRows.filter((assignment) => assignment.scopeType === "department" && assignment.scopeId === department.id).length,
+    })),
+    departmentAssignments: departmentAssignmentRows.map((assignment) => ({
+      id: assignment.id,
+      personId: assignment.personId,
+      departmentId: assignment.departmentId,
+      departmentName: assignment.department.nameKk,
+    })),
+  };
+}
+
+export async function getPublicContentValues(): Promise<PublicContentValues> {
+  await ensureDatabase();
+  const values = defaultPublicContent();
+  const rows = await getDb().publicContent.findMany({ select: { key: true, value: true } });
+  for (const row of rows) {
+    if (row.key in values) values[row.key as keyof PublicContentValues] = row.value;
+  }
+  return values;
 }
 
 export async function recordAudit(input: {
@@ -247,28 +786,37 @@ export async function recordAudit(input: {
   sessionId?: string | null;
 }) {
   await ensureDatabase();
-  await getRawDb().prepare(
-    `INSERT INTO audit_logs (id, actor_user_id, action_type, target_entity, target_entity_id,
-      previous_value, new_value, reason, ip_address, session_id, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-  ).bind(
-    crypto.randomUUID(), input.actorUserId ?? null, input.actionType, input.targetEntity,
-    input.targetEntityId, input.previousValue === undefined ? null : JSON.stringify(input.previousValue),
-    input.newValue === undefined ? null : JSON.stringify(input.newValue), input.reason ?? null,
-    input.ipAddress ?? null, input.sessionId ?? null, new Date().toISOString(),
-  ).run();
+  await getDb().auditLog.create({
+    data: {
+      id: crypto.randomUUID(),
+      actorUserId: input.actorUserId ?? null,
+      actionType: input.actionType,
+      targetEntity: input.targetEntity,
+      targetEntityId: input.targetEntityId,
+      previousValue: input.previousValue === undefined ? null : JSON.stringify(input.previousValue),
+      newValue: input.newValue === undefined ? null : JSON.stringify(input.newValue),
+      reason: input.reason ?? null,
+      ipAddress: input.ipAddress ?? null,
+      sessionId: input.sessionId ?? null,
+      createdAt: new Date(),
+    },
+  });
 }
 
 export async function checkRateLimit(key: string, limit: number, windowSeconds: number) {
   await ensureDatabase();
-  const database = getRawDb();
   const now = Math.floor(Date.now() / 1000);
-  const row = await database.prepare("SELECT window_start AS windowStart, count FROM rate_limits WHERE key = ?").bind(key).first<{ windowStart: number; count: number }>();
-  if (!row || now - row.windowStart >= windowSeconds) {
-    await database.prepare("INSERT INTO rate_limits (key, window_start, count) VALUES (?, ?, 1) ON CONFLICT(key) DO UPDATE SET window_start = excluded.window_start, count = 1").bind(key, now).run();
-    return true;
-  }
-  if (row.count >= limit) return false;
-  await database.prepare("UPDATE rate_limits SET count = count + 1 WHERE key = ?").bind(key).run();
-  return true;
+  const rows = await getDb().$queryRaw<Array<{ count: number }>>(Prisma.sql`
+    INSERT INTO "rate_limits" ("key", "window_start", "count")
+    VALUES (${key}, ${now}, 1)
+    ON CONFLICT ("key") DO UPDATE SET
+      "window_start" = CASE
+        WHEN EXCLUDED."window_start" - "rate_limits"."window_start" >= ${windowSeconds}
+        THEN EXCLUDED."window_start" ELSE "rate_limits"."window_start" END,
+      "count" = CASE
+        WHEN EXCLUDED."window_start" - "rate_limits"."window_start" >= ${windowSeconds}
+        THEN 1 ELSE "rate_limits"."count" + 1 END
+    RETURNING "count"
+  `);
+  return (rows[0]?.count ?? limit + 1) <= limit;
 }

@@ -3,7 +3,7 @@ export type SupportedLocale = (typeof supportedLocales)[number];
 export const defaultLocale: SupportedLocale = "kk";
 
 const kk = {
-  association: "Қауымдастық",
+  association: "Бірлестік",
   structure: "Құрылым",
   branches: "Филиалдар",
   projects: "Жобалар",

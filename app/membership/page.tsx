@@ -1,26 +1,34 @@
 import type { Metadata } from "next";
 import Image from "next/image";
-import Link from "next/link";
-import { CheckCircle2, FileLock2, QrCode, ShieldCheck } from "lucide-react";
+import { FileLock2, QrCode, ShieldCheck } from "lucide-react";
 import { PublicShell } from "@/app/components/PublicShell";
-import { listBranches } from "@/db/queries";
+import { getMembershipApplicationDraft, listBranches } from "@/db/queries";
+import { getCurrentUser } from "@/lib/auth";
+import { MembershipApplicationForm } from "./MembershipApplicationForm";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Бірлестікке мүше болу" };
 
-const errors: Record<string, string> = {
-  validation: "Кейбір өрістер дұрыс толтырылмаған. Мәліметтерді тексеріп, қайта жіберіңіз.",
-  terms: "Өтініш жіберу үшін мүшелік шарттарын қабылдау қажет.",
-  document: "1–3 PDF, JPG немесе PNG құжатын тіркеңіз. Әр файл 5 МБ-тан аспауы тиіс.",
-  duplicate: "Бұл электрондық поштаға тұрақты профиль бұрыннан тіркелген. Қолдау қызметіне хабарласыңыз.",
-  region: "Таңдалған өңірде белсенді филиал табылмады.",
-  rate: "Қысқа уақытта тым көп өтініш жіберілді. Кейінірек қайталап көріңіз.",
-  unexpected: "Өтінішті сақтау мүмкін болмады. Кейінірек қайталап көріңіз.",
-};
-
 export default async function MembershipPage({ searchParams }: { searchParams: Promise<{ source?: string; error?: string }> }) {
   const params = await searchParams;
-  const branches = await listBranches();
   const source = params.source === "qr" ? "qr" : "web";
-  return <PublicShell><main className="membership-page"><section className="membership-intro"><div className="container membership-intro-grid"><div><p className="eyebrow">Мүшелікке өтініш</p><h1>Кәсіби қауымдастыққа <em>қосылыңыз.</em></h1><p>Өтініш сіз таңдаған өңірге автоматты түрде бағытталады. Жауапты филиал мәліметтер мен құжаттарды қарап, шешім қабылдайды.</p><div className="process-list"><span><b>1</b> Деректер мен құжаттар</span><span><b>2</b> Өңірлік қарау</span><span><b>3</b> Шешім және тұрақты тарих</span></div></div><aside><QrCode size={24} /><strong>QR арқылы ашылатын сілтеме</strong><Image src="/api/membership-qr" width={156} height={156} unoptimized alt="Мүшелік нысанының QR коды" /><small>/membership?source=qr</small></aside></div></section><section className="section container form-layout"><div className="form-main"><div className="form-heading"><span>Өтініш нысаны</span><h2>Кәсіби мәліметтер</h2><p>Жұлдызшамен белгіленген өрістер міндетті.</p></div>{params.error && <div className="form-alert" role="alert">{errors[params.error] ?? errors.unexpected}</div>}<form className="application-form" action="/api/applications" method="post" encType="multipart/form-data"><input type="hidden" name="source" value={source} /><fieldset><legend>Жеке және байланыс деректері</legend><div className="form-grid"><label className="span-2">Толық аты-жөні *<input name="fullName" required minLength={5} autoComplete="name" placeholder="Тегі, аты, әкесінің аты" /></label><label>Туған жылы *<input name="birthYear" type="number" required min={1940} max={2008} placeholder="1990" /></label><label>Өңір *<select name="regionCode" required defaultValue=""><option value="" disabled>Өңірді таңдаңыз</option>{branches.filter((branch) => branch.status === "active").map((branch) => <option value={branch.regionCode} key={branch.id}>{branch.regionName}</option>)}</select></label><label>Қала / аудан *<input name="cityDistrict" required placeholder="Алматы қаласы" /></label><label>Телефон *<input name="phone" required autoComplete="tel" placeholder="+7 700 000 00 00" /></label><label className="span-2">Электрондық пошта *<input name="email" type="email" required autoComplete="email" placeholder="name@example.kz" /></label></div></fieldset><fieldset><legend>Кәсіби мәліметтер</legend><div className="form-grid"><label>Жұмыс орны *<input name="workplace" required /></label><label>Лауазымы *<input name="position" required /></label><label className="span-2">Білімі *<textarea name="education" required rows={2} /></label><label className="span-2">Кәсіби тәжірибесі *<textarea name="professionalExperience" required rows={3} /></label><label className="span-2">Математика саласындағы мамандануы *<textarea name="mathSpecialization" required rows={2} /></label><label className="span-2">Кәсіби жетістіктері<textarea name="achievements" rows={3} /></label><label className="span-2">Қысқаша кәсіби өмірбаяны *<textarea name="biography" required minLength={30} rows={5} /></label></div></fieldset><fieldset><legend>Растайтын құжаттар</legend><label className="file-drop"><FileLock2 size={26} /><strong>Құжаттарды тіркеңіз *</strong><span>1–3 файл · PDF, JPG немесе PNG · әрқайсысы 5 МБ-қа дейін</span><input name="documents" type="file" required multiple accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" /></label></fieldset><label className="terms-check"><input name="termsAccepted" type="checkbox" required /><span>Мен <Link href="/membership/terms" target="_blank">мүшелік шарттарымен және дербес деректерді өңдеу тәртібімен</Link> таныстым және қабылдаймын.</span></label><button className="button button-primary submit-button" type="submit">Өтінішті жіберу <CheckCircle2 size={18} /></button></form></div><aside className="form-aside"><div><ShieldCheck size={24} /><h3>Деректер қорғалған</h3><p>Тіркелген құжаттар ашық сайтта жарияланбайды. Оларды тек сіздің өңіріңіздегі уәкілетті қызметкерлер және орталық әкімшілік көре алады.</p></div><div><FileLock2 size={24} /><h3>Бір тұрақты профиль</h3><p>Мәртебеңіз өзгергенде жаңа профиль ашылмайды. Барлық мүшелік тарих бір жазбада сақталады.</p></div></aside></section></main></PublicShell>;
+  const user = await getCurrentUser();
+  if (!user) redirect(`/register?next=${encodeURIComponent(`/membership?source=${source}`)}`);
+  if (!user.emailVerifiedAt) redirect("/verify-email");
+  const [branches, draft] = await Promise.all([listBranches(), getMembershipApplicationDraft(user)]);
+  const canContinue = user.membershipStatus === "registered_user";
+
+  return <PublicShell><main className="membership-page">
+    <section className="membership-intro"><div className="container membership-intro-grid"><div><p className="eyebrow">Мүшелікке өтініш</p><h1>Кәсіби бірлестікке <em>қосылыңыз.</em></h1><p>Расталған тіркелгіңізбен өтінішті үш бөлімде толтырыңыз. Draft автоматты сақталады және кейін қайта жалғастырылады.</p><div className="process-list"><span><b>1</b> Жеке деректер</span><span><b>2</b> Кәсіби мәліметтер</span><span><b>3</b> Құжаттар және келісімдер</span></div></div><aside><QrCode size={24} /><strong>QR арқылы ашылатын сілтеме</strong><Image src="/api/membership-qr" width={156} height={156} unoptimized alt="Мүшелік нысанының QR коды" /><small>/membership?source=qr</small></aside></div></section>
+    <section className="section container form-layout"><div className="form-main"><div className="form-heading"><span>Мүшелік өтініші</span><h2>Үш бөлімді өтініш</h2><p>Жұлдызшамен белгіленген өрістер міндетті. Қате өріс нақты көрсетіледі, қалған дерек жоғалмайды.</p></div>
+      {params.error && <div className="form-alert" role="alert">Алдыңғы әрекет аяқталмады. Сақталған draft деректерін тексеріңіз.</div>}
+      {canContinue ? <MembershipApplicationForm
+        branches={branches.map((branch) => ({ regionCode: branch.regionCode, regionName: branch.regionName, status: branch.status }))}
+        source={(draft?.source === "qr" ? "qr" : source)}
+        initialDraft={draft ?? undefined}
+        initialDocuments={draft?.documents}
+      /> : <div className="form-alert success"><p>Бұл тіркелгіде мүшелік өтініші бұрын жіберілген.</p><a className="button button-primary" href="/dashboard/profile">Профильге өту</a></div>}
+    </div><aside className="form-aside"><div><ShieldCheck size={24} /><h3>Деректер қорғалған</h3><p>Draft пен тіркелген құжаттар тек иесіне көрінеді. Өтініш нақты жіберілгеннен кейін ғана өңірлік қарауға өтеді.</p></div><div><FileLock2 size={24} /><h3>Бір тұрақты профиль</h3><p>Қайта толтыру немесе қате түзету екінші тіркелгі, профиль не өтініш жасамайды.</p></div></aside></section>
+  </main></PublicShell>;
 }

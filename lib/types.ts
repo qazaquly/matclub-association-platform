@@ -1,13 +1,14 @@
 export type RoleSlug =
   | "member"
   | "branch_staff"
+  | "branch_event_manager"
+  | "branch_project_manager"
   | "branch_director"
   | "department_staff"
   | "department_head"
   | "vice_president_1"
   | "vice_president_2"
-  | "president"
-  | "super_admin";
+  | "president";
 
 export type MembershipStatus =
   | "registered_user"
@@ -32,10 +33,12 @@ export interface UserRoleAssignment {
 export interface AppUser {
   id: string;
   email: string;
+  emailVerifiedAt: string | null;
   fullName: string;
   profileId: string;
   membershipStatus: MembershipStatus;
   branchId: string | null;
   roles: UserRoleAssignment[];
+  permissions: string[];
   sessionId: string;
 }
