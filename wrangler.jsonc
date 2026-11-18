@@ -37,6 +37,6 @@
   "ENVIRONMENT": "production",
   "EMAIL_PROVIDER": "resend",
   "EMAIL_FROM": "Республикалық математиктер бірлестігі <no-reply@matclub.kz>",
-  "APP_BASE_URL": "https://matclub.kz"
+  "APP_BASE_URL": "https://mathclub.kz"
 }
 }
