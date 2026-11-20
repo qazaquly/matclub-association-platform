@@ -2890,3 +2890,47 @@ test("daily workspace lists, creation views, member shortcuts and role views are
   assert.match(audit, /Бұл бетте жазба табылмады/);
   assert.equal((await appRequest("/dashboard/audit?page=2", { headers: authHeaders(member) })).status, 404);
 });
+
+test("Large directories, exports and monthly indicators include records beyond former limits", async () => {
+  const admin = authHeaders(await login("president@example.test"));
+  const client = new pg.Client({ connectionString: DATABASE_URL });
+  const key = "Volume-" + randomUUID();
+  await client.connect();
+  try {
+    await client.query(`INSERT INTO person_profiles (id, full_name, region_code, city_district, phone, email,
+      membership_status, membership_started_at, branch_id, updated_at)
+      SELECT $1 || n, $1 || lpad(n::text, 5, '0'), 'Алматы қаласы', 'Алматы', '000',
+      $1 || n || '@example.test', 'member', DATE '2042-01-15', 'branch-almaty', now()
+      FROM generate_series(1, 10003) n`, [key]);
+    await client.query(`INSERT INTO institutional_documents (id,title,document_number,document_date,document_type,
+      created_by,updated_by,updated_at)
+      SELECT $1 || lpad(n::text, 5, '0'), $1 || lpad(n::text, 5, '0'), $1 || n, DATE '2042-01-15',
+      'ORDER', u.id, u.id, now() FROM generate_series(1, 501) n CROSS JOIN users u
+      WHERE u.email = 'president@example.test'`, [key]);
+    for (const [path, last, previous] of [
+      [`/dashboard/members?q=${key}&page=201`, "10003", "10000"],
+      [`/dashboard/documents?q=${key}&page=11`, "00501", "00500"],
+    ]) {
+      const response = await appRequest(path, { headers: admin });
+      assert.equal(response.status, 200);
+      const html = visibleMarkup(await response.text());
+      assert.ok(html.includes(key + last), path);
+      assert.ok(!html.includes(key + previous), path);
+      assert.ok(html.includes(encodeURIComponent(path)), "detail link must preserve the filtered page");
+    }
+    const response = await appRequest(`/api/reports/export?kind=members&format=xlsx&q=${key}`, { headers: admin });
+    assert.equal(response.status, 200);
+    const xlsx = Buffer.from(await response.arrayBuffer());
+    for (const suffix of ["00001", "05001", "10003"]) assert.ok(xlsx.includes(Buffer.from(key + suffix)), suffix);
+    const analytics = await appRequest("/dashboard/analytics?from=2042-01-01&to=2042-01-31&branchId=branch-almaty", { headers: admin });
+    assert.equal(analytics.status, 200);
+    assert.ok(visibleMarkup(await analytics.text()).includes('title="10003 жаңа мүше"'));
+  } finally {
+    try {
+      await client.query("UPDATE institutional_documents SET status='ARCHIVED', archived_at=now() WHERE left(id,length($1))=$1", [key]);
+      await client.query("DELETE FROM person_profiles WHERE left(id,length($1))=$1", [key]);
+    } finally {
+      await client.end();
+    }
+  }
+});

@@ -1,4 +1,4 @@
-/* eslint-disable @next/next/no-html-link-for-pages -- vinext dashboard transitions require native navigation. */
+import { listOrigin } from "@/lib/list-navigation";
 import { Archive, ArrowLeft, Download, FileClock, FileText, History, RotateCcw } from "lucide-react";
 import { notFound } from "next/navigation";
 import { InstitutionalDocumentForm } from "@/app/components/InstitutionalDocumentForm";
@@ -11,7 +11,7 @@ import {
 import { formatDate } from "@/lib/format";
 import { institutionalDocumentAccessLabel, institutionalDocumentScopeLabel, institutionalDocumentTypeLabel } from "@/lib/institutional-documents";
 
-function message(state: { success?: string; error?: string }) {
+function message(state: { success?: string; error?: string; fromList?: string }) {
   if (state.success === "version") return { kind: "success", text: "Жаңа файл нұсқасы қосылды. Бұрынғы нұсқа тарихта сақталды." };
   if (state.success) return { kind: "success", text: "Өзгеріс сақталып, аудит журналына тіркелді." };
   if (state.error === "duplicate") return { kind: "error", text: "Осы нөмір, күн және түрмен құжат бұрын тіркелген." };
@@ -19,7 +19,7 @@ function message(state: { success?: string; error?: string }) {
   return null;
 }
 
-export default async function InstitutionalDocumentDetailPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ success?: string; error?: string }> }) {
+export default async function InstitutionalDocumentDetailPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ success?: string; error?: string; fromList?: string }> }) {
   const actor = (await getCurrentUser())!;
   const { id } = await params;
   const [document, state, options] = await Promise.all([getInstitutionalDocument(id), searchParams, getInstitutionalDocumentOptions(actor)]);
@@ -29,7 +29,7 @@ export default async function InstitutionalDocumentDetailPage({ params, searchPa
   const note = message(state);
   const currentVersion = document.versions[0];
   return <main className="dashboard-content">
-    <a className="back-link" href="/dashboard/documents"><ArrowLeft size={15} /> Ішкі құжаттар қоры</a>
+    <a className="back-link" href={listOrigin(state.fromList) ?? "/dashboard/documents"}><ArrowLeft size={15} /> Ішкі құжаттар қоры</a>
     <div className="dash-page-heading"><div><p>{institutionalDocumentTypeLabel(document.documentType)} · № {document.documentNumber}</p><h1>{document.title}</h1></div><span className={`document-status ${document.status.toLowerCase()}`}>{document.status === "ACTIVE" ? "Қолданыста" : "Архив"}</span></div>
     {note && <div className={`dash-alert ${note.kind}`}>{note.text}</div>}
     <section className="document-detail-overview"><article><span>Құжат күні</span><strong>{formatDate(document.documentDate.toISOString())}</strong><small>{institutionalDocumentScopeLabel(document.scopeType)}</small></article><article><span>Жауапты құрылым</span><strong>{document.branch?.regionName ?? document.responsibleDepartment?.nameKk ?? "Орталық басқарма"}</strong><small>{institutionalDocumentAccessLabel(document.accessLevel)}</small></article><article><span>Қазіргі нұсқа</span><strong>№ {currentVersion?.versionNumber ?? 0}</strong><small>{currentVersion?.originalName ?? "Файл жоқ"}</small></article><article><span>Тіркеген</span><strong>{document.creator.profile?.fullName ?? "Жүйе"}</strong><small>{formatDate(document.createdAt.toISOString())}</small></article></section>
@@ -42,6 +42,6 @@ export default async function InstitutionalDocumentDetailPage({ params, searchPa
     </div>
 
     {manageable && document.status === "ACTIVE" && <details className="panel document-edit-panel"><summary>Құжат деректерін өңдеу</summary><InstitutionalDocumentForm action={`/api/institutional-documents/${id}`} branches={options.branches} departments={options.departments} canManageGlobal={global} canManageBranch={canManageBranchInstitutionalDocuments(actor)} canManageDepartment={canManageDepartmentInstitutionalDocuments(actor)} item={document} /></details>}
-    {manageable && <section className="panel document-archive-panel"><div><span>{document.status === "ACTIVE" ? "Қолданыстан шығару" : "Қайта қолданысқа енгізу"}</span><h2>{document.status === "ACTIVE" ? <><Archive size={18} /> Архивке жіберу</> : <><RotateCcw size={18} /> Архивтен қайтару</>}</h2><p>Файлдар мен бұрынғы нұсқалар өшірілмейді және ресми тарих ретінде сақталады.</p></div><form action={`/api/institutional-documents/${id}`} method="post"><input name="action" type="hidden" value="status" /><input name="status" type="hidden" value={document.status === "ACTIVE" ? "ARCHIVED" : "ACTIVE"} /><input maxLength={2000} name="reason" placeholder={document.status === "ACTIVE" ? "Архивке жіберу себебі *" : "Қайтару түсіндірмесі"} required={document.status === "ACTIVE"} /><button className={document.status === "ACTIVE" ? "button button-danger" : "button button-primary"} type="submit">{document.status === "ACTIVE" ? "Архивке жіберу" : "Қайтару"}</button></form></section>}
+    {manageable && <section className="panel document-archive-panel"><div><span>{document.status === "ACTIVE" ? "Қолданыстан шығару" : "Қайта қолданысқа енгізу"}</span><h2>{document.status === "ACTIVE" ? <><Archive size={18} /> Архивке жіберу</> : <><RotateCcw size={18} /> Архивтен қайтару</>}</h2><p>Файлдар мен бұрынғы нұсқалар өшірілмейді және ресми тарих ретінде сақталады.</p></div><form action={`/api/institutional-documents/${id}`} method="post"><input name="action" type="hidden" value="status" /><input name="status" type="hidden" value={document.status === "ACTIVE" ? "ARCHIVED" : "ACTIVE"} /><input maxLength={2000} aria-label="Өзгеріс себебі" name="reason" placeholder={document.status === "ACTIVE" ? "Архивке жіберу себебі *" : "Қайтару түсіндірмесі"} required={document.status === "ACTIVE"} /><button className={document.status === "ACTIVE" ? "button button-danger" : "button button-primary"} type="submit">{document.status === "ACTIVE" ? "Архивке жіберу" : "Қайтару"}</button></form></section>}
   </main>;
 }

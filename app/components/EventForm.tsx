@@ -1,4 +1,5 @@
 /* eslint-disable @next/next/no-img-element -- Event covers use the audited public-media route. */
+import { PersonSelect } from "@/app/components/PersonSelect";
 import { dateTimeLocalValue } from "@/lib/events";
 
 interface EventFormItem {
@@ -61,7 +62,7 @@ export function EventForm({
     <label><span>Онлайн сілтеме</span><input name="onlineUrl" defaultValue={item?.onlineUrl ?? ""} type="url" maxLength={1000} placeholder="https://" /></label>
     <label className="content-field-wide"><span>Кімдерге арналған</span><textarea name="audience" defaultValue={item?.audience ?? ""} required maxLength={1000} rows={3} /></label>
     <label><span>Ұйымдастырушы</span><input name="organizer" defaultValue={item?.organizer ?? ""} required maxLength={500} /></label>
-    <label><span>Жауапты адам</span><select name="responsibleProfileId" defaultValue={item?.responsibleProfileId ?? ""}><option value="">Таңдалмаған</option>{options.people.map((person) => <option value={person.id} key={person.id}>{person.fullName}</option>)}</select></label>
+    <PersonSelect people={options.people} name="responsibleProfileId" label="Жауапты адам" placeholder="Таңдалмаған" defaultId={item?.responsibleProfileId ?? ""} />
     <label><span>Жауапты құрылымдық бөлім</span><select name="responsibleDepartmentId" defaultValue={item?.responsibleDepartmentId ?? ""}><option value="">Таңдалмаған</option>{options.departments.map((department) => <option value={department.id} key={department.id}>{department.nameKk}</option>)}</select></label>
 
     <label><span>Тіркелу тәртібі</span><select name="registrationMode" defaultValue={item?.registrationMode ?? "NONE"}><option value="NONE">Тіркелусіз</option><option value="EXTERNAL_LINK">Сыртқы сілтеме</option><option value="INTERNAL_MEMBERS">Мүшелер үшін ішкі тіркелу</option></select></label>

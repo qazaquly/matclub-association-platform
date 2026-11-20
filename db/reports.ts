@@ -117,7 +117,6 @@ export async function buildReport(actor: AppUser, filters: ReportFilters): Promi
         professionalCategories: { where: { removedAt: null }, include: { category: { select: { name: true } } } },
       },
       orderBy: [{ fullName: "asc" }, { id: "asc" }],
-      take: 5000,
     });
     const mapped = rows.map((row) => ({
       detailHref: "/dashboard/members/" + row.id,
@@ -144,7 +143,7 @@ export async function buildReport(actor: AppUser, filters: ReportFilters): Promi
         ...(containsAny(["fullName", "email", "workplace", "position", "cityDistrict"], filters.query) ? { person: { archivedAt: null, OR: containsAny(["fullName", "email", "workplace", "position", "cityDistrict"], filters.query) } } : {}),
         ...(range.from || range.endExclusive ? { submittedAt: { ...(range.from ? { gte: range.from } : {}), ...(range.endExclusive ? { lt: range.endExclusive } : {}) } } : {}),
       },
-      include: { branch: { select: { regionName: true } }, person: true }, orderBy: [{ submittedAt: "desc" }, { id: "asc" }], take: 5000,
+      include: { branch: { select: { regionName: true } }, person: true }, orderBy: [{ submittedAt: "desc" }, { id: "asc" }],
     });
     const mapped = rows.map((row) => ({
       detailHref: "/dashboard/applications/" + row.id,
@@ -172,7 +171,7 @@ export async function buildReport(actor: AppUser, filters: ReportFilters): Promi
         ...(range.from || range.endExclusive ? { startAt: { ...(range.from ? { gte: range.from } : {}), ...(range.endExclusive ? { lt: range.endExclusive } : {}) } } : {}),
       },
       include: { branch: { select: { regionName: true } }, result: { select: { participantCount: true } }, registrations: { where: { registrationStatus: "REGISTERED" }, select: { attendance: { select: { status: true } } } } },
-      orderBy: [{ startAt: "desc" }, { id: "asc" }], take: 5000,
+      orderBy: [{ startAt: "desc" }, { id: "asc" }],
     });
     const mapped = rows.map((row) => ({
       startAt: dateValue(row.startAt), title: row.title, scope: eventScopeLabel(row.eventScope), branch: row.branch?.regionName ?? row.regionName ?? "Республикалық",
@@ -194,7 +193,7 @@ export async function buildReport(actor: AppUser, filters: ReportFilters): Promi
 
   const rows = await database.project.findMany({
     where: {
-      archivedAt: null, ...(branches ? { AND: [{ OR: [{ branchId: { in: branches } }, { projectScope: "ALL_BRANCHES" }] }] } : {}), ...(filters.status ? { status: filters.status } : {}),
+      archivedAt: null, ...(branches ? { AND: [{ OR: [{ branchId: { in: branches } }, ...(branches.length ? [{ projectScope: "ALL_BRANCHES" }] : [])] }] } : {}), ...(filters.status ? { status: filters.status } : {}),
       ...(containsAny(["title", "summary", "code"], filters.query) ? { OR: containsAny(["title", "summary", "code"], filters.query) } : {}),
       ...(range.from || range.endExclusive ? { startDate: { ...(range.from ? { gte: range.from } : {}), ...(range.endExclusive ? { lt: range.endExclusive } : {}) } } : {}),
     },
@@ -202,7 +201,7 @@ export async function buildReport(actor: AppUser, filters: ReportFilters): Promi
       branch: { select: { regionName: true } }, responsibleDepartment: { select: { nameKk: true } }, leaderProfile: { select: { fullName: true } },
       result: { select: { beneficiaryCount: true } }, _count: { select: { participants: true, stages: true } },
     },
-    orderBy: [{ startDate: "desc" }, { id: "asc" }], take: 5000,
+    orderBy: [{ startDate: "desc" }, { id: "asc" }],
   });
   const mapped = rows.map((row) => ({
     startDate: dateValue(row.startDate), endDate: dateValue(row.endDate), title: row.title, code: row.code ?? "", scope: projectScopeLabel(row.projectScope),

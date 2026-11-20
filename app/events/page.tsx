@@ -7,8 +7,10 @@ import { formatDate } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
+const calendarDate = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Almaty", year: "numeric", month: "2-digit", day: "2-digit" });
+
 function almatyDateKey(value: Date) {
-  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Almaty", year: "numeric", month: "2-digit", day: "2-digit" }).format(value);
+  return calendarDate.format(value);
 }
 
 function monthKey(value: Date) {
@@ -32,7 +34,7 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
   const dayCount = new Date(Date.UTC(year, month, 0)).getUTCDate();
   const firstDay = new Date(`${selectedMonth}-01T12:00:00+05:00`).getUTCDay();
   const mondayOffset = (firstDay + 6) % 7;
-  const monthItems = filtered.filter((item) => monthKey(item.startAt) === selectedMonth);
+  const monthItems = view === "calendar" ? filtered.map(item => ({ item, first: almatyDateKey(item.startAt), last: almatyDateKey(item.endAt) })).filter(({ first, last }) => first.slice(0, 7) <= selectedMonth && last.slice(0, 7) >= selectedMonth) : [];
 
   return <PublicShell><main>
     <section className="page-hero"><div className="container narrow"><p className="eyebrow">Іс-шаралар</p><h1>Іс-шаралар күнтізбесі</h1><p>Республикалық және филиалдық кездесулер, кәсіби талқылаулар мен бірлестік шаралары.</p></div></section>
@@ -51,8 +53,8 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
         <div className="calendar-grid">{Array.from({ length: mondayOffset }, (_, index) => <span className="calendar-day empty" key={`empty-${index}`} />)}{Array.from({ length: dayCount }, (_, index) => {
           const day = index + 1;
           const key = `${selectedMonth}-${String(day).padStart(2, "0")}`;
-          const dayEvents = monthItems.filter((item) => almatyDateKey(item.startAt) === key);
-          return <span className={`calendar-day ${dayEvents.length ? "has-events" : ""}`} key={key}><b>{day}</b>{dayEvents.map((item) => <a href={`/events/${item.slug}`} key={item.id}>{item.title}<small>{eventStatusLabel(item.status)}</small></a>)}</span>;
+          const dayEvents = monthItems.filter(({ first, last }) => first <= key && key <= last);
+          return <span className={`calendar-day ${dayEvents.length ? "has-events" : ""}`} key={key}><b>{day}</b>{dayEvents.map(({ item }) => <a href={`/events/${item.slug}`} key={item.id}>{item.title}<small>{eventStatusLabel(item.status)}</small></a>)}</span>;
         })}</div>
       </div> : <div className="event-public-list">{filtered.map((item) => <article className="event-public-card" key={item.id}>
         {item.coverMediaId && <img src={`/api/public-media/${item.coverMediaId}`} alt="" />}

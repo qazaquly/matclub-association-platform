@@ -4,6 +4,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { isFullAccess } from "@/lib/authorization";
 import { StatusBadge } from "@/app/components/StatusBadge";
 import { getBranchWorkspace } from "@/db/branch-workspace";
 import { getCurrentUser } from "@/lib/auth";
@@ -42,6 +43,7 @@ export default async function BranchWorkspacePage({
       <StatusBadge status={branch.status} />
     </div>
 
+    {isFullAccess(actor) && <details className="branch-editor"><summary>Филиалды басқару</summary><form action={`/api/branches/${branch.id}`} method="post"><label>Атауы<input name="name" defaultValue={branch.name} required /></label><label>Мәртебе<select name="status" defaultValue={branch.status}><option value="active">Белсенді</option><option value="inactive">Белсенді емес</option><option value="archived">Мұрағат</option></select></label><label>Себеп<input name="reason" required minLength={5} placeholder="Өзгеріс себебі" /></label><button type="submit">Сақтау</button></form></details>}
     <nav className="workspace-nav" aria-label="Кабинет бөлімдері">
       <a href="#overview">Шолу</a><a href="#members">Мүшелер</a><a href="#applications">Өтініштер</a>
       <a href="#events">Іс-шаралар</a><a href="#projects">Жобалар</a><a href="#documents">Құжаттар</a><a href="#report">Кезеңдік есеп</a>
@@ -62,7 +64,7 @@ export default async function BranchWorkspacePage({
     <div className="workspace-columns">
       <section className="panel workspace-section" id="members">
         <div className="panel-heading"><div><span>Адамдар</span><h2><Users size={18} /> Мүшелер</h2></div><a href={`/dashboard/members?branchId=${branchQuery}`}>Барлығы <ArrowRight size={14} /></a></div>
-        <div className="workspace-breakdown"><a href={`/dashboard/members?branchId=${branchQuery}`}><strong>{memberCount}</strong><span>Мақұлданған мүше</span></a><a href={`/dashboard/applications?branchId=${branchQuery}`}><strong>{applicantCount}</strong><span>Үміткерлер өтініште</span></a><span><strong>{reserveCount}</strong><span>Резерв</span></span></div>
+        <div className="workspace-breakdown"><a href={`/dashboard/members?branchId=${branchQuery}`}><strong>{memberCount}</strong><span>Мақұлданған мүше</span></a><a href={`/dashboard/applications?branchId=${branchQuery}&status=applicant`}><strong>{applicantCount}</strong><span>Үміткерлер өтініште</span></a><span><strong>{reserveCount}</strong><span>Резерв</span></span></div>
         <div className="workspace-list">{data.recentMembers.map((item) => <a href={`/dashboard/members/${item.id}`} key={item.id}><div><strong>{item.fullName}</strong><small>{item.workplace ?? item.position ?? "Жұмыс орны көрсетілмеген"}</small></div><StatusBadge status={item.membershipStatus} /></a>)}{data.recentMembers.length === 0 && <p className="empty-content">Филиалда мақұлданған мүше жоқ.</p>}</div>
       </section>
 

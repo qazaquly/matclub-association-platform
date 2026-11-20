@@ -46,7 +46,7 @@ export function institutionalDocumentAccessWhere(actor: AppUser): Prisma.Institu
   };
 }
 
-export async function listInstitutionalDocuments(actor: AppUser, filters: InstitutionalDocumentFilters = {}) {
+export async function listInstitutionalDocuments(actor: AppUser, filters: InstitutionalDocumentFilters = {}, limit = 500, offset = 0) {
   await ensureDatabase();
   const from = dateFilter(filters.from);
   const to = dateFilter(filters.to, true);
@@ -75,8 +75,8 @@ export async function listInstitutionalDocuments(actor: AppUser, filters: Instit
       versions: { orderBy: { versionNumber: "desc" }, take: 1, select: { versionNumber: true, originalName: true, sizeBytes: true } },
       _count: { select: { versions: true } },
     },
-    orderBy: [{ documentDate: "desc" }, { createdAt: "desc" }],
-    take: 500,
+    orderBy: [{ documentDate: "desc" }, { createdAt: "desc" }, { id: "asc" }],
+    skip: offset, take: limit,
   });
 }
 

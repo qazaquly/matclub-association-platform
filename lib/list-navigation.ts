@@ -1,5 +1,5 @@
 const destinations = [
-  "/dashboard/applications", "/dashboard/members", "/dashboard/reports",
+  "/dashboard/applications", "/dashboard/members", "/dashboard/reports", "/dashboard/documents",
 ];
 
 export function listOrigin(input: unknown) {
@@ -18,5 +18,6 @@ export function withListOrigin(href: string, origin?: string | null) {
 export function listBackLabel(list: string) {
   if (list.startsWith("/dashboard/reports")) return "Есепке оралу";
   if (list.startsWith("/dashboard/members")) return "Мүшелерге оралу";
+  if (list.startsWith("/dashboard/documents")) return "Құжаттарға оралу";
   return "Өтініштерге оралу";
 }

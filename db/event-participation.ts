@@ -56,9 +56,8 @@ export async function listEligibleEventMembers(actor: AppUser, event: { branchId
       membershipStatus: "member",
       ...(event.branchId ? { branchId: event.branchId } : global ? {} : { branchId: { in: scopes } }),
     },
-    select: { id: true, fullName: true, email: true, phone: true, branch: { select: { regionName: true } } },
+    select: { id: true, fullName: true, branch: { select: { regionName: true } } },
     orderBy: { fullName: "asc" },
-    take: 2_000,
   });
 }
 

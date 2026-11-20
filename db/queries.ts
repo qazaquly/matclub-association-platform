@@ -309,7 +309,7 @@ function searchVariants(value: string) {
   return [...new Set([value, lower, upper, title])];
 }
 
-export async function listMembers(user: AppUser, filters: MemberSearchFilters = {}, limit = 500) {
+export async function listMembers(user: AppUser, filters: MemberSearchFilters = {}, limit = 500, offset = 0) {
   await ensureDatabase();
   const branches = filteredBranchIds(user, filters.branchId);
   const query = filters.query?.trim().slice(0, 120);
@@ -354,7 +354,8 @@ export async function listMembers(user: AppUser, filters: MemberSearchFilters = 
         orderBy: { category: { sortOrder: "asc" } },
       },
     },
-    orderBy: { fullName: "asc" },
+    orderBy: [{ fullName: "asc" }, { id: "asc" }],
+    skip: offset,
     take: limit,
   });
   return profiles.map((profile) => ({
@@ -572,11 +573,18 @@ export async function getOwnProfile(user: AppUser) {
 export async function listBranches(user?: AppUser) {
   await ensureDatabase();
   const scopedIds = user && !isFullAccess(user) ? branchScopeIds(user) : null;
-  const branches = await getDb().branch.findMany({
-    where: { archivedAt: null, ...(scopedIds ? { id: { in: scopedIds } } : {}) },
-    include: { directorProfile: true, profiles: { where: { archivedAt: null }, select: { membershipStatus: true } } },
-    orderBy: { regionName: "asc" },
-  });
+  const db = getDb();
+  const [branches, counts] = await Promise.all([
+    db.branch.findMany({
+      where: { archivedAt: null, ...(scopedIds ? { id: { in: scopedIds } } : {}) },
+      include: { directorProfile: { select: { fullName: true } } }, orderBy: { regionName: "asc" },
+    }),
+    db.personProfile.groupBy({
+      by: ["branchId", "membershipStatus"], where: { archivedAt: null, branchId: scopedIds ? { in: scopedIds } : { not: null },
+        membershipStatus: { in: ["member", "applicant", "reserve"] } }, _count: true,
+    }),
+  ]);
+  const totals = new Map(counts.map((row) => [row.branchId + "/" + row.membershipStatus, row._count]));
   return branches.map((branch) => ({
     id: branch.id,
     name: branch.name,
@@ -584,9 +592,9 @@ export async function listBranches(user?: AppUser) {
     regionName: branch.regionName,
     status: branch.status,
     directorName: branch.directorProfile?.fullName ?? null,
-    memberCount: branch.profiles.filter((profile) => profile.membershipStatus === "member").length,
-    applicantCount: branch.profiles.filter((profile) => profile.membershipStatus === "applicant").length,
-    reserveCount: branch.profiles.filter((profile) => profile.membershipStatus === "reserve").length,
+    memberCount: totals.get(branch.id + "/member") ?? 0,
+    applicantCount: totals.get(branch.id + "/applicant") ?? 0,
+    reserveCount: totals.get(branch.id + "/reserve") ?? 0,
   }));
 }
 
@@ -617,12 +625,13 @@ export async function listDocumentRemovalRequests() {
   }));
 }
 
-export async function listProfessionalProfiles(user: AppUser, filters: { categoryId?: string; branchId?: string } = {}) {
+export async function listProfessionalProfiles(user: AppUser, filters: { q?: string; categoryId?: string; branchId?: string } = {}) {
   await ensureDatabase();
   const nationwide = isNationwideProfessionalAccess(user);
   const departmentIds = departmentScopeIds(user);
   const profiles = await getDb().personProfile.findMany({
     where: {
+      ...(filters.q ? { OR: searchVariants(filters.q).map(value => ({ fullName: { contains: value, mode: "insensitive" as const } })) } : {}),
       membershipStatus: "member",
       archivedAt: null,
       ...(filters.branchId ? { branchId: filters.branchId } : {}),

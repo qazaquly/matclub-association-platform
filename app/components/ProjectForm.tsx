@@ -1,5 +1,6 @@
 "use client";
 
+import { PersonSelect } from "@/app/components/PersonSelect";
 import { useState } from "react";
 
 type Options = {
@@ -45,7 +46,7 @@ export function ProjectForm({ action, options, canChooseNational, canChooseAllBr
     <label><span>Деңгейі *</span><select name="projectScope" onChange={(event) => setScope(event.target.value)} value={scope}>{canChooseNational && <option value="NATIONAL">Республикалық</option>}<option value="BRANCH">Филиалдық</option></select></label>
     {scope === "BRANCH" && <label><span>Филиал *</span><select defaultValue={branchSelection} name="branchId" required><option disabled value="">Филиалды таңдаңыз</option>{(canChooseAllBranches || item?.projectScope === "ALL_BRANCHES") && <option value="__all__">Барлық филиал</option>}{options.branches.map((branch) => <option key={branch.id} value={branch.id}>{branch.regionName}</option>)}</select></label>}
     <label><span>Жауапты департамент</span><select defaultValue={item?.responsibleDepartmentId ?? ""} name="responsibleDepartmentId"><option value="">Тағайындалмаған</option>{options.departments.map((department) => <option key={department.id} value={department.id}>{department.nameKk}</option>)}</select></label>
-    <label><span>Жоба жетекшісі</span><select defaultValue={item?.leaderProfileId ?? ""} name="leaderProfileId"><option value="">Тағайындалмаған</option>{options.people.map((person) => <option key={person.id} value={person.id}>{person.fullName}</option>)}</select></label>
+    <PersonSelect people={options.people} name="leaderProfileId" label="Жоба жетекшісі" placeholder="Тағайындалмаған" defaultId={item?.leaderProfileId ?? ""} />
     {options.publicProjects.length > 0 && <label><span>Ашық сайттағы жоба</span><select defaultValue={item?.publicProjectId ?? ""} name="publicProjectId"><option value="">Байланыстырылмаған</option>{options.publicProjects.map((project) => <option key={project.id} value={project.id}>{project.title} · {project.status}</option>)}</select></label>}
     <label><span>Басталу күні *</span><input defaultValue={dateInput(item?.startDate)} name="startDate" required type="date" /></label>
     <label><span>Аяқталу күні</span><input defaultValue={dateInput(item?.endDate)} name="endDate" type="date" /></label>

@@ -31,7 +31,7 @@ export default async function DashboardEventsPage({ searchParams }: { searchPara
       {state.branchId && <input name="branchId" type="hidden" value={state.branchId} />}
       <button className="button" type="submit">Сүзу</button>{(state.q || state.status || state.scope || state.branchId) && <a href={base}>Тазарту</a>}
     </form>}
-    {creating && options ? <section className="panel event-create-panel"><div className="panel-heading"><div><span>Жаңа жоба</span><h2><Plus size={17} /> Іс-шара ашу</h2></div></div><EventForm action="/api/events" options={options} canChooseNational={canManageGlobalEvents(actor)} canManageMedia={canManagePublicMedia(actor)} submitLabel="Жобаны сақтау" /></section> : (<>
+    {creating && options ? <section className="panel event-create-panel"><div className="panel-heading"><div><span>Жаңа іс-шара</span><h2><Plus size={17} /> Іс-шара ашу</h2></div></div><EventForm action="/api/events" options={options} canChooseNational={canManageGlobalEvents(actor)} canManageMedia={canManagePublicMedia(actor)} submitLabel="Іс-шараны сақтау" /></section> : (<>
       <section className="panel event-list-panel"><div className="panel-heading"><div><span>Басқарылатын іс-шаралар</span><h2>{items.length} жазба</h2></div><a href="/events" target="_blank" rel="noreferrer">Ашық күнтізбе</a></div>
         <div className="event-admin-list">{items.map((item) => <article key={item.id}><a className="event-row-link" href={`/dashboard/events/${item.id}`}>
           <span className="event-list-date"><CalendarDays size={16} /><strong>{formatDate(item.startAt.toISOString())}</strong></span>
