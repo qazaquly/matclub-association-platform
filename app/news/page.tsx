@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-html-link-for-pages -- Use native navigation with Vinext. */
 /* eslint-disable @next/next/no-img-element -- Images come from the audited public-media route and have no static dimensions. */
 import { ArrowRight, CalendarDays } from "lucide-react";
 import { PublicShell } from "@/app/components/PublicShell";
@@ -12,6 +13,6 @@ export default async function NewsPage() {
     <section className="section container"><div className="public-content-grid">{items.map((item) => <article className="public-content-card" key={item.id}>
       {item.coverMediaId && <img src={`/api/public-media/${item.coverMediaId}`} alt="" />}
       <div><small><CalendarDays size={13} /> {item.publishedAt?.toLocaleDateString("kk-KZ")}</small><h2>{item.title}</h2><p>{item.lead}</p><a href={`/news/${item.slug}`}>Толық оқу <ArrowRight size={15} /></a></div>
-    </article>)}{items.length === 0 && <div className="public-empty-state"><h2>Жаңалықтар дайындалып жатыр</h2><p>Жарияланған материалдар осы жерде көрсетіледі.</p></div>}</div></section>
+    </article>)}{items.length === 0 && <div className="public-empty-state"><h2>Әзірге жарияланған жаңалық жоқ</h2><a className="section-jump" href="/events">Іс-шаралар күнтізбесі</a></div>}</div></section>
   </main></PublicShell>;
 }

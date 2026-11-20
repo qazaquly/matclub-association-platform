@@ -13,6 +13,7 @@ export function DashboardShell({ user, children }: { user: AppUser; children: Re
     { group: "Мүшелік", href: "/dashboard/professional", label: "Кәсіби деректер", icon: BookOpenCheck, show: isDepartmentAccess(user) && !isFullAccess(user) },
     { group: "Мүшелік", href: "/dashboard/branches", label: "Филиалдар", icon: Building2, show: canReviewApplications(user) },
     { group: "Іс-шаралар мен жобалар", href: "/dashboard/events", label: "Іс-шаралар", icon: CalendarDays, show: canManageGlobalEvents(user) || canManageBranchEvents(user) },
+    { group: "Іс-шаралар мен жобалар", href: "/events", label: "Іс-шаралар күнтізбесі", icon: CalendarDays, show: !canManageGlobalEvents(user) && !canManageBranchEvents(user) },
     { group: "Іс-шаралар мен жобалар", href: "/dashboard/projects", label: "Жобалар", icon: BriefcaseBusiness, show: canReadProjects(user) },
     { group: "Есеп және басқару", href: "/dashboard/reports", label: "Есептер", icon: BarChart3, show: canViewReports(user) },
     { group: "Есеп және басқару", href: "/dashboard/analytics", label: "Басқару көрсеткіштері", icon: ChartNoAxesCombined, show: canViewReports(user) },

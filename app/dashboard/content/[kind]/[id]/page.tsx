@@ -31,7 +31,7 @@ export default async function DynamicContentEditPage({ params, searchParams }: {
     {deletionDate && <div className="dash-alert error">Бұл материал архивте. Қайтарылмаса, {formatDate(deletionDate.toISOString())} күні автоматты түрде толық өшеді. Аудит жазбасы сақталады.</div>}
     <section className="panel dynamic-edit-panel"><DynamicContentForm kind={rawKind} item={item} action={`/api/content/${rawKind}/${id}`} submitLabel="Өзгерісті сақтау" /></section>
     <div className="dynamic-publish-bar">
-      <a className="button" href={publicHref} target="_blank" rel="noreferrer"><ExternalLink size={15} /> Ашық бетті көру</a>
+      {isVisible && <a className="button" href={publicHref} target="_blank" rel="noreferrer"><ExternalLink size={15} /> Ашық бетті көру</a>}
       {canPublish && <div>
         {!isVisible && <form action={`/api/content/${rawKind}/${id}`} method="post"><button className="button button-primary" name="action" value="publish" type="submit">{rawKind === "partners" ? "Сайтта көрсету" : "Жариялау"}</button></form>}
         {!isArchived && <form action={`/api/content/${rawKind}/${id}`} method="post"><button className="button button-danger" name="action" value="archive" type="submit">{rawKind === "partners" ? "Жасыру" : "Архивке алу"}</button></form>}

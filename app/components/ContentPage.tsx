@@ -4,6 +4,7 @@ import { getPublicContentValues } from "@/db/queries";
 
 export interface ContentBlock {
   kicker?: string;
+  links?: { label: string; href: string }[];
   title: string;
   text: string;
 }
@@ -33,7 +34,7 @@ export async function ContentPage({
             {blocks.map((block, index) => (
               <article className="content-block" key={block.title}>
                 <span>{String(index + 1).padStart(2, "0")}</span>
-                <div>{block.kicker && <small>{block.kicker}</small>}<h2>{block.title}</h2><p>{block.text}</p></div>
+                <div>{block.kicker && <small>{block.kicker}</small>}<h2>{block.title}</h2><p>{block.text}</p>{block.links && <div className="task-links">{block.links.map((link) => <a key={link.href} href={link.href}>{link.label} <ArrowRight size={14} /></a>)}</div>}</div>
               </article>
             ))}
           </div>

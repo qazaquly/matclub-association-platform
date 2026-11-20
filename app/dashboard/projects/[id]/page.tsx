@@ -6,7 +6,7 @@ import { ProjectStageBatchForm } from "@/app/components/ProjectStageBatchForm";
 import { getManagedProject, getProjectFormOptions, listEligibleProjectMembers } from "@/db/projects";
 import { getCurrentUser } from "@/lib/auth";
 import {
-  canAccessManagedProject, canManageGlobalProjects, canManageProjectDocuments, canManageProjectParticipants,
+  canAccessManagedProject, canManageDynamicContent, canManageGlobalProjects, canManageProjectDocuments, canManageProjectParticipants,
   canManageProjectResults, canManageProjectStages,
 } from "@/lib/authorization";
 import { formatDate } from "@/lib/format";
@@ -39,7 +39,10 @@ export default async function DashboardProjectDetailPage({ params, searchParams 
     <div className="dash-page-heading"><div><p>{project.code ?? projectScopeLabel(project.projectScope)}</p><h1>{project.title}</h1></div><span className={`project-status large ${project.status.toLowerCase()}`}>{projectStatusLabel(project.status)}</span></div>
     {note && <div className={`dash-alert ${note.kind}`}>{note.text}</div>}
     <section className="project-overview-grid"><article><span>Мерзімі</span><strong>{formatDate(project.startDate.toISOString())}</strong><small>{project.endDate ? formatDate(project.endDate.toISOString()) : "Мерзімсіз"}</small></article><article><span>Жетекші</span><strong>{project.leaderProfile?.fullName ?? "Тағайындалмаған"}</strong><small>{projectCoverageLabel(project)}</small></article><article><span>Қатысушылар</span><strong>{activeParticipants} белсенді</strong><small>{completedParticipants} адамның тарихына түсті</small></article><article><span>Кезеңдер</span><strong>{completedStages} / {project.stages.length}</strong><small>аяқталған</small></article></section>
-    {project.publicProject && <a className="project-public-link" href={`/projects/${project.publicProject.slug}`} target="_blank" rel="noreferrer"><ExternalLink size={16} /> Ашық сайттағы «{project.publicProject.title}» жазбасын көру · {project.publicProject.status}</a>}
+    <nav className="task-links" aria-label="Жоба бөлімдері"><a href="#project-stages">Кезеңдер</a><a href="#project-participants">Қатысушылар</a><a href="#project-documents">Құжаттар</a><a href="#project-result">Нәтиже</a></nav>
+    {project.publicProject?.status === "PUBLISHED" && <a className="project-public-link" href={`/projects/${project.publicProject.slug}`}><ExternalLink size={16} /> Ашық сайттағы «{project.publicProject.title}»</a>}
+    {canManageDynamicContent(actor) && <a className="project-public-link" href={project.publicProject ? `/dashboard/content/projects/${project.publicProject.id}` : "/dashboard/content/projects"}>Ашық жобалар редакциясына өту</a>}
+
 
     {!archived && <details className="panel project-edit-panel"><summary>Негізгі деректерді өңдеу</summary><ProjectForm action={`/api/projects/${id}`} options={options} canChooseNational={canManageGlobalProjects(actor) || project.projectScope === "NATIONAL"} canChooseAllBranches={canManageGlobalProjects(actor)} item={project} submitLabel="Өзгерісті сақтау" /></details>}
     <section className="panel project-workflow"><div><span>Жоба мәртебесі</span><h2>{projectStatusLabel(project.status)}</h2><p>{project.statusNote ?? "Мәртебе бойынша түсініктеме жоқ."}</p></div><div>{allowedProjectTransitions(project.status).map((status) => <form action={`/api/projects/${id}`} method="post" key={status}><input name="action" type="hidden" value="status" /><input name="status" type="hidden" value={status} /><input maxLength={2000} name="reason" placeholder="Түсініктеме" required={status === "CANCELLED" || status === "ARCHIVED"} /><button className={status === "CANCELLED" || status === "ARCHIVED" ? "button button-danger" : "button"} type="submit">{projectStatusLabel(status)}</button></form>)}</div></section>

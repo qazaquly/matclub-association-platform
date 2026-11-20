@@ -45,13 +45,18 @@ function stateMessage(state: { success?: string; error?: string }) {
   return null;
 }
 
-export default async function AccessPage({ searchParams }: { searchParams: Promise<{ success?: string; error?: string }> }) {
+export default async function AccessPage({ searchParams }: { searchParams: Promise<{ success?: string; error?: string; view?: string; q?: string }> }) {
   const actor = (await getCurrentUser())!;
   if (!canManageRoles(actor)) notFound();
   const [access, branches, state] = await Promise.all([listUsersAndRoles(), listBranches(), searchParams]);
   const { users, assignments, roles, departments, departmentAssignments } = access;
   const ordered = orderedDepartments(departments);
   const message = stateMessage(state);
+  const outcome = state.success ?? state.error ?? "";
+  const view = outcome.startsWith("structure") ? "structure" : outcome === "department" ? "departments"
+    : ["structure", "departments"].includes(state.view ?? "") ? state.view : "roles";
+  const needle = state.q?.trim().toLocaleLowerCase("kk-KZ") ?? "";
+  const matchingUsers = users.filter((user) => (user.fullName + " " + user.email).toLocaleLowerCase("kk-KZ").includes(needle));
   const scopeNames = new Map([
     ...branches.map((branch) => [branch.id, branch.regionName] as const),
     ...departments.map((department) => [department.id, department.nameKk] as const),
@@ -60,14 +65,12 @@ export default async function AccessPage({ searchParams }: { searchParams: Promi
   return <main className="dashboard-content">
     <div className="dash-page-heading"><div><p>Серверлік авторизация</p><h1>Рөлдер мен құқықтар</h1></div><span className="immutable-pill"><ShieldCheck size={15} /> A деңгейі</span></div>
     {message && <div className={`dash-alert ${message.kind}`}>{message.text}</div>}
-    <section className="access-overview">
-      <div><span>A</span><strong>Толық</strong><small>Президент, II вице-президент</small></div>
-      <div><span>B</span><strong>Кәсіби</strong><small>I вице-президент — республика; басшы — өз бөлімі</small></div>
-      <div><span>C</span><strong>Филиал</strong><small>Тек өз өңірі</small></div>
-      <div><span>D</span><strong>Мүше</strong><small>Тек өз профилі</small></div>
-    </section>
-
-    <section className="panel structure-panel">
+    <nav className="task-links" aria-label="Құқықтарды басқару">
+      <a href="/dashboard/access" aria-current={view === "roles" ? "page" : undefined}>Пайдаланушылар мен рөлдер</a>
+      <a href="?view=departments" aria-current={view === "departments" ? "page" : undefined}>Бөлім мүшелері</a>
+      <a href="?view=structure" aria-current={view === "structure" ? "page" : undefined}>Ұйымдық құрылым</a>
+    </nav>
+    {view === "structure" && <section className="panel structure-panel">
       <div className="panel-heading"><div><span>Басқарылатын иерархия</span><h2>Ұйымдық құрылым</h2></div><FolderTree size={21} /></div>
       <p className="panel-intro">Президент пен II вице-президент бөлімдерді код өзгертпей жасайды, өңдейді және архивтейді. Архивтеу алдында белсенді мүшелер мен рөлдер басқа бөлімге ауыстырылуы тиіс.</p>
       <div className="structure-management-grid">
@@ -112,10 +115,18 @@ export default async function AccessPage({ searchParams }: { searchParams: Promi
           {ordered.length === 0 && <div className="empty-state"><h3>Құрылымдық бөлім жоқ</h3><p>Алғашқы бөлімді сол жақтағы нысан арқылы ашыңыз.</p></div>}
         </div>
       </div>
-    </section>
+    </section>}
 
-    <div className="access-grid">
-      <section className="panel">
+    {view === "roles" && <div className="access-grid access-roles">
+      <section className="panel wide"><a className="section-jump" href="#grant-role">Жаңа рөл беру</a>
+        <div className="panel-heading"><div><span>Белсенді құқықтар</span><h2>Пайдаланушылар</h2></div><span>{assignments.length} тағайындау</span></div>
+        <form className="event-filter" method="get"><label>Аты-жөні немесе email<input name="q" type="search" defaultValue={state.q} /></label><button className="button">Іздеу</button>{state.q && <a href="/dashboard/access">Тазарту</a>}</form>
+        <div className="assignment-list">{matchingUsers.length === 0 && <p className="empty-content">Пайдаланушы табылмады.</p>}{matchingUsers.map((user) => {
+          const userAssignments = assignments.filter((assignment) => assignment.userId === user.id);
+          return <article key={user.id}><div><strong>{user.fullName}</strong><small>{user.email} · {statusLabel(user.membershipStatus)}</small></div><div className="role-chips">{userAssignments.length ? userAssignments.map((assignment) => <form key={assignment.id} action="/api/access/roles" method="post"><input type="hidden" name="action" value="revoke" /><input type="hidden" name="assignmentId" value={assignment.id} /><button title="Рөлді қайтару" type="submit">{assignment.nameKk}{assignment.scopeId && scopeNames.get(assignment.scopeId) ? <small>{scopeNames.get(assignment.scopeId)}</small> : null}<span>×</span></button></form>) : <span className="no-role">Жүйелік рөл жоқ</span>}</div></article>;
+        })}</div>
+      </section>
+      <section className="panel" id="grant-role">
         <div className="panel-heading"><div><span>Тағайындау</span><h2>Жаңа рөл беру</h2></div><UserCog size={20} /></div>
         <form className="role-form" action="/api/access/roles" method="post">
           <input type="hidden" name="action" value="grant" />
@@ -126,16 +137,12 @@ export default async function AccessPage({ searchParams }: { searchParams: Promi
           <button className="button button-secondary" type="submit">Рөл беру</button>
         </form>
       </section>
-      <section className="panel wide">
-        <div className="panel-heading"><div><span>Белсенді құқықтар</span><h2>Пайдаланушылар</h2></div><span>{assignments.length} тағайындау</span></div>
-        <div className="assignment-list">{users.map((user) => {
-          const userAssignments = assignments.filter((assignment) => assignment.userId === user.id);
-          return <article key={user.id}><div><strong>{user.fullName}</strong><small>{user.email} · {statusLabel(user.membershipStatus)}</small></div><div className="role-chips">{userAssignments.length ? userAssignments.map((assignment) => <form key={assignment.id} action="/api/access/roles" method="post"><input type="hidden" name="action" value="revoke" /><input type="hidden" name="assignmentId" value={assignment.id} /><button title="Рөлді қайтару" type="submit">{assignment.nameKk}{assignment.scopeId && scopeNames.get(assignment.scopeId) ? <small>{scopeNames.get(assignment.scopeId)}</small> : null}<span>×</span></button></form>) : <span className="no-role">Жүйелік рөл жоқ</span>}</div></article>;
-        })}</div>
-      </section>
-    </div>
+    </div>}
+    {view === "roles" && <details className="registry-filters"><summary>Рөл деңгейлерінің мағынасы</summary>
+      <div className="access-overview"><div><span>A</span><strong>Толық басқару</strong><small>Президент пен II вице-президент</small></div><div><span>B</span><strong>Кәсіби жұмыс</strong><small>I вице-президент және бөлім басшылары</small></div><div><span>C</span><strong>Филиал</strong><small>Өз өңіріндегі жұмыс</small></div><div><span>D</span><strong>Мүше</strong><small>Жеке кабинет және мүшеге ашық бөлімдер</small></div></div>
+    </details>}
 
-    <div className="access-grid">
+    {view === "departments" && <div className="access-grid">
       <section className="panel">
         <div className="panel-heading"><div><span>Кәсіби байланыс</span><h2>Құрылымдық бөлімге қосу</h2></div><BookOpenCheck size={20} /></div>
         <form className="role-form" action="/api/access/departments" method="post">
@@ -154,6 +161,6 @@ export default async function AccessPage({ searchParams }: { searchParams: Promi
           return <article key={user.personId}><div><strong>{user.fullName}</strong><small>{user.email}</small></div><div className="role-chips">{personAssignments.map((assignment) => <form key={assignment.id} action="/api/access/departments" method="post"><input type="hidden" name="action" value="revoke" /><input type="hidden" name="assignmentId" value={assignment.id} /><button title="Бөлімнен шығару" type="submit">{assignment.departmentName}<span>×</span></button></form>)}</div></article>;
         })}</div>
       </section>
-    </div>
+    </div>}
   </main>;
 }
