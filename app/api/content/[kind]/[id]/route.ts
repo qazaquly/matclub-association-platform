@@ -1,3 +1,4 @@
+import { updateHomeSelection } from "@/db/home-feature";
 import { getDb } from "@/db";
 import { authenticateRequest } from "@/lib/auth";
 import { canManageDynamicContent, canManagePublicMedia, canPublishDynamicContent } from "@/lib/authorization";
@@ -84,6 +85,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ kin
         reason = status === "ARCHIVED" ? "Материал ашық сайттан архивке алынды" : status === "PUBLISHED" ? "Материал ашық сайтта жарияланды" : "Жарияланбаған жоба архивтен қайтарылды";
       }
 
+      if (action === "save" && canPublishDynamicContent(actor) && rawKind !== "partners" && previous.status === "PUBLISHED") await updateHomeSelection(transaction, rawKind, id, actor.id, form);
       await transaction.auditLog.create({ data: {
         id: crypto.randomUUID(), actorUserId: actor.id, actionType,
         targetEntity: rawKind, targetEntityId: id, previousValue: serializeAuditValue(previous), newValue: serializeAuditValue(updated),

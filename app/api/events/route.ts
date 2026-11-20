@@ -1,3 +1,4 @@
+import { updateHomeSelection } from "@/db/home-feature";
 import { getDb } from "@/db";
 import { authenticateRequest } from "@/lib/auth";
 import { canManageBranchEvents, canManageGlobalEvents, canPublishEvents, canManagePublicMedia, eventBranchScopeIds } from "@/lib/authorization";
@@ -53,6 +54,7 @@ export async function POST(request: Request) {
         publishedAt: publish ? now : null, submittedAt: submit ? now : null, createdBy: actor.id, updatedBy: actor.id, createdAt: now, updatedAt: now,
       } });
       if (publish) await activatePublicMedia(transaction, freshMediaId);
+      if (publish) await updateHomeSelection(transaction, "events", id, actor.id, form);
       await transaction.auditLog.create({ data: {
         id: crypto.randomUUID(), actorUserId: actor.id, actionType: publish ? "event.published" : submit ? "event.submitted" : "event.created", targetEntity: "event", targetEntityId: id,
         newValue: serializeAuditValue(created), reason: publish ? "Іс-шара жарияланды" : submit ? "Іс-шара қарауға жіберілді" : "Нобай сақталды", ipAddress: clientIp(request), sessionId: actor.sessionId, createdAt: now,

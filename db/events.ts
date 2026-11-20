@@ -1,3 +1,4 @@
+import { selectedHomeItem } from "./home-feature";
 import { ensureDatabase } from "@/db/bootstrap";
 import { getDb } from "@/db";
 import { canManageGlobalEvents, eventBranchScopeIds } from "@/lib/authorization";
@@ -72,10 +73,16 @@ export async function getPublicEvent(slug: string) {
 }
 
 export async function getNearestUpcomingEvent(now = new Date()) {
-  await ensureDatabase();
-  return getDb().event.findFirst({
+  const reference = await selectedHomeItem("events");
+  const query = {
     where: { status: { in: ["PUBLISHED", "POSTPONED"] }, publishedAt: { not: null }, archivedAt: null, startAt: { gte: now } },
     include: { branch: { select: { regionName: true } }, coverMedia: true },
-    orderBy: { startAt: "asc" },
-  });
+    orderBy: { startAt: "asc" as const },
+  };
+  const db = getDb();
+  if (reference?.startsWith("events/")) {
+    const selected = await db.event.findFirst({ ...query, where: { ...query.where, id: reference.slice(7) } });
+    if (selected) return selected;
+  }
+  return db.event.findFirst(query);
 }

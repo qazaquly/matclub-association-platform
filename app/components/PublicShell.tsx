@@ -6,12 +6,10 @@ import type { PublicContentValues } from "@/lib/public-content";
 import { getPublicContentValues } from "@/db/queries";
 
 const primaryLinks = [
-  [translate(defaultLocale, "association"), "/about"],
-  [translate(defaultLocale, "structure"), "/structure"],
-  [translate(defaultLocale, "branches"), "/branches"],
-  ["Іс-шаралар", "/events"],
-  [translate(defaultLocale, "projects"), "/projects"],
-  [translate(defaultLocale, "news"), "/news"],
+  ["Материалдар", "/publications"],
+  ["Кездесулер", "/events"],
+  ["Филиалдар", "/branches"],
+  ["Бірлестік", "/about"],
 ] as const;
 
 export async function PublicShell({ children, content: suppliedContent }: { children: React.ReactNode; content?: PublicContentValues }) {
@@ -38,7 +36,7 @@ export async function PublicShell({ children, content: suppliedContent }: { chil
             <a className="header-cta" href={primaryHref}>{primaryLabel}</a>
             <details className="mobile-menu">
               <summary aria-label="Мәзірді ашу"><Menu size={22} /><ChevronDown size={14} /></summary>
-              <nav>{primaryLinks.map(([label, href]) => <a href={href} key={href}>{label}</a>)}<a href={accountHref}>{accountLabel}</a>{!cabinet && primaryHref !== accountHref && <a href={primaryHref}>{primaryLabel}</a>}</nav>
+              <nav>{primaryLinks.map(([label, href]) => <a href={href} key={href}>{label}</a>)}<a href="/news">Жаңалықтар</a><a href="/projects">Жобалар</a><a href="/structure">Құрылым</a><a href={accountHref}>{accountLabel}</a>{!cabinet && primaryHref !== accountHref && <a href={primaryHref}>{primaryLabel}</a>}</nav>
             </details>
           </div>
         </div>

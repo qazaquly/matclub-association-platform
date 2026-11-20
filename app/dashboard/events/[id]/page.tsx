@@ -1,4 +1,5 @@
 /* eslint-disable @next/next/no-html-link-for-pages -- Vinext beta client routing breaks normal dashboard left-click navigation. */
+import { selectedHomeItem } from "@/db/home-feature";
 import { isPublicEventStatus } from "@/lib/events";
 import { ArrowLeft, DoorOpen, ExternalLink, FileText, Monitor, Newspaper, ShieldCheck, Users } from "lucide-react";
 import { notFound } from "next/navigation";
@@ -32,6 +33,7 @@ export default async function DashboardEventPage({ params, searchParams }: { par
   const global = canManageGlobalEvents(actor);
   const editable = global || event.status === "DRAFT";
   const canPublish = canPublishEvents(actor);
+  const featureSelected = global && canPublish && event.publishedAt && ["PUBLISHED", "POSTPONED"].includes(event.status) ? (await selectedHomeItem("events")) === "events/" + id : undefined;
   const canResult = canManageEventResults(actor) && event.status !== "ARCHIVED";
   const canNews = canGenerateEventNews(actor);
   const canOpenCms = canManageDynamicContent(actor);
@@ -49,7 +51,7 @@ export default async function DashboardEventPage({ params, searchParams }: { par
     {canViewEventParticipants(actor) && <section className="event-participation-shortcuts"><div><span>Тіркелген</span><strong>{participation.registered}</strong></div><div><span>Қатысты</span><strong>{participation.present}</strong></div><div><span>Бас тартқан</span><strong>{participation.cancelled}</strong></div><a className="button button-primary" href={`/dashboard/events/${id}/participants`}><Users size={16} /> Қатысушылар</a>{canManageEventAttendance(actor) && <a className="button" href={`/dashboard/events/${id}/reception`}><DoorOpen size={16} /> Келгендерді белгілеу</a>}{event.publishedAt && !event.archivedAt && isPublicEventStatus(event.status) && <a className="button" href={`/events/${event.slug}/screen`} target="_blank" rel="noreferrer"><Monitor size={16} /> Экран</a>}</section>}
     {event.statusNote && <div className="event-status-note"><strong>{eventStatusLabel(event.status)}</strong><p>{event.statusNote}</p></div>}
 
-    {editable && <section id="event-edit" className="panel event-edit-panel"><div className="panel-heading"><div><span>Негізгі деректер</span><h2>Іс-шараны өңдеу</h2></div></div><EventForm action={`/api/events/${id}`} item={event} options={options} canChooseNational={global} canManageMedia={canManagePublicMedia(actor)} submitLabel="Өзгерісті сақтау" /></section>}
+    {editable && <section id="event-edit" className="panel event-edit-panel"><div className="panel-heading"><div><span>Негізгі деректер</span><h2>Іс-шараны өңдеу</h2></div></div><EventForm featureSelected={featureSelected} action={`/api/events/${id}`} item={event} options={options} canChooseNational={global} canManageMedia={canManagePublicMedia(actor)} submitLabel="Өзгерісті сақтау" /></section>}
     {!editable && !global && <div className="dash-alert success">Жоба орталық тексеруге жіберілді. Жарияланғанға дейін өңдеу жабық.</div>}
 
     <section id="event-workflow" className="panel event-workflow-panel"><div className="panel-heading"><div><span>Мәртебе</span><h2>Жұмыс барысы</h2></div>{event.publishedAt && !event.archivedAt && isPublicEventStatus(event.status) && <a href={`/events/${event.slug}`} target="_blank" rel="noreferrer"><ExternalLink size={14} /> Ашық бет</a>}</div>

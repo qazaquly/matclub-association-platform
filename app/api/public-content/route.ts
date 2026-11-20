@@ -2,7 +2,7 @@ import { ensureDatabase } from "@/db/bootstrap";
 import { getDb } from "@/db";
 import { authenticateRequest } from "@/lib/auth";
 import { canManagePublicContent } from "@/lib/authorization";
-import { displayedContentValue, publicContentDefinitions, validatePublicContentValue } from "@/lib/public-content";
+import { displayedContentValue, visiblePublicContentDefinitions, validatePublicContentValue } from "@/lib/public-content";
 import { assertSameOrigin, clientIp } from "@/lib/security";
 
 export async function POST(request: Request) {
@@ -13,7 +13,7 @@ export async function POST(request: Request) {
     if (!canManagePublicContent(actor)) return new Response("Forbidden", { status: 403 });
 
     const form = await request.formData();
-    const submitted = publicContentDefinitions.filter(definition => !definition.key.startsWith("contact.") || form.has(definition.key)).map((definition) => ({
+    const submitted = visiblePublicContentDefinitions.filter(definition => !definition.key.startsWith("contact.") || form.has(definition.key)).map((definition) => ({
       definition,
       value: validatePublicContentValue(definition.key, form.get(definition.key)),
     }));
@@ -21,7 +21,7 @@ export async function POST(request: Request) {
     const database = getDb();
     const existingRows = await database.publicContent.findMany({ select: { key: true, value: true, updatedBy: true } });
     const existing = new Map(existingRows.map((row) => [row.key, row]));
-    const original = (definition: typeof publicContentDefinitions[number]) => {
+    const original = (definition: typeof visiblePublicContentDefinitions[number]) => {
       const row = existing.get(definition.key);
       return row ? displayedContentValue(definition.key, row) : definition.defaultValue;
     };
