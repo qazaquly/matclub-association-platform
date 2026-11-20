@@ -14,8 +14,10 @@ import { eventFormatLabel, eventScopeLabel, eventStatusLabel, registrationModeLa
 import { formatDate } from "@/lib/format";
 
 function stateMessage(state: { success?: string; error?: string }) {
-  if (state.success === "result") return { kind: "success", text: "Құрылымдалған қорытынды сақталды және аудитке жазылды." };
-  if (state.success) return { kind: "success", text: "Өзгеріс сақталды және аудит журналына тіркелді." };
+  if (state.success === "published") return { kind: "success", text: "Іс-шара сайтқа жарияланды." };
+  if (state.success === "submitted") return { kind: "success", text: "Іс-шара қарауға жіберілді." };
+  if (state.success === "result") return { kind: "success", text: "Іс-шара қорытындысы сақталды." };
+  if (state.success) return { kind: "success", text: "Өзгеріс сақталды." };
   if (state.error === "result-required") return { kind: "error", text: "Іс-шараны аяқтау немесе қорытынды жаңалығын жасау алдында құрылымдалған қорытындыны сақтаңыз." };
   if (state.error) return { kind: "error", text: "Өзгеріс сақталмады. Өрістерді, мәртебе ауысуын және құқықтарды тексеріңіз." };
   return null;

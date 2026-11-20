@@ -12,19 +12,19 @@ const priorities = [
     icon: Users,
     number: "01",
     title: "Кәсіби бірлік",
-    text: "Математиктердің тәжірибесі, білімі мен бастамалары тоғысатын тұрақты орта.",
+    text: "Мұғалімдер, ғалымдар мен әдіскерлер бір-бірімен тәжірибе алмасады.",
   },
   {
     icon: Network,
     number: "02",
     title: "Өңірлік желі",
-    text: "Республикалық мақсат пен жергілікті жұмысты байланыстыратын ашық филиалдар жүйесі.",
+    text: "Әр филиал өз өңіріндегі математиктерді біріктіреді.",
   },
   {
     icon: ShieldCheck,
     number: "03",
-    title: "Институционалдық жады",
-    text: "Әр мүшенің бір профилі және бірлестіктегі қызметінің толық, үздіксіз тарихы.",
+    title: "Мүшенің жеке кабинеті",
+    text: "Қатысқан іс-шараларыңыз бен жобаларыңызды кабинеттен көре аласыз.",
   },
 ];
 
@@ -60,15 +60,13 @@ export default async function Home() {
               <div className="hero-monogram">ҚМ</div>
             </div>
           </div>
-          <div className="container principle-strip">
-            <span>Бір адам</span><i>→</i><span>бір профиль</span><i>→</i><span>біртұтас тарих</span>
-          </div>
+
         </section>
 
         <section className="section container">
           <div className="section-heading split-heading">
             <div>
-              <p className="eyebrow dark">Біздің негіз</p>
+              <p className="eyebrow dark">Бірлестік туралы</p>
               <h2>{content["home.about.heading"]}</h2>
             </div>
             <p>{content["home.about.intro"]}</p>
@@ -110,16 +108,16 @@ export default async function Home() {
           </div>
           <div className="agenda-grid">
             <a href="/events" className="agenda-card featured">
-              <CalendarDays size={26} /><span>Кәсіби кездесулер</span>
-              <h3>Өңірлерді байланыстыратын ашық диалог алаңы</h3><ArrowRight size={20} />
+              <CalendarDays size={26} /><span>Іс-шаралар</span>
+              <h3>Кездесулер күнтізбесі</h3><ArrowRight size={20} />
             </a>
             <a href="/publications" className="agenda-card">
               <BookOpen size={26} /><span>Әдістемелік қор</span>
-              <h3>Математикалық білім мен тәжірибе материалдары</h3><ArrowRight size={20} />
+              <h3>Математикадан әдістемелік материалдар</h3><ArrowRight size={20} />
             </a>
             <a href="/branches" className="agenda-card">
               <Building2 size={26} /><span>Өңірлік жұмыс</span>
-              <h3>Филиалдардың кәсіби бастамалары мен байланысы</h3><ArrowRight size={20} />
+              <h3>Өз өңіріңіздегі филиалды табыңыз</h3><ArrowRight size={20} />
             </a>
           </div>
         </section>

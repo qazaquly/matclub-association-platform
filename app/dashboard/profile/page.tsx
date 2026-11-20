@@ -1,4 +1,4 @@
-import { CalendarCheck, Eye, EyeOff, PencilLine, ShieldCheck } from "lucide-react";
+import { CalendarCheck, Eye, PencilLine, ShieldCheck } from "lucide-react";
 import { StatusBadge } from "@/app/components/StatusBadge";
 import { getOwnProfile } from "@/db/queries";
 import { getCurrentUser } from "@/lib/auth";
@@ -32,7 +32,7 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
       <div className="profile-main-column">
       <section className="panel" id="profile-fields">
         <div className="panel-heading">
-          <div><span><PencilLine size={15} /> 1-қабат</span><h2>Өзгертуге болатын деректер</h2></div>
+          <div><span><PencilLine size={15} /> Өзім өзгерте аламын</span><h2>Менің деректерім</h2></div>
           <span className="visibility-label"><Eye size={15} /> Сізге көрінеді</span>
         </div>
         <form className="profile-form" action="/api/profile" method="post">
@@ -59,9 +59,9 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
       </div>
       <aside>
         <section className="profile-official">
-          <div><ShieldCheck size={21} /><span>2-қабат</span></div>
+          <div><ShieldCheck size={21} /><span>Әкімші өзгертеді</span></div>
           <h2>Ресми деректер</h2>
-          <p>Бұл ақпарат сізге көрінеді, бірақ тек уәкілетті әкімшілік арқылы өзгереді.</p>
+          <p>Мәртебе немесе филиал қате көрсетілсе, филиал басшысына хабарласыңыз.</p>
           <dl>
             <div><dt>Мүшелік мәртебесі</dt><dd><StatusBadge status={String(profile.membership_status)} /></dd></div>
             <div><dt>Кәсіби санаттар</dt><dd><div className="category-chips profile-category-chips">{profile.professionalCategories.length ? profile.professionalCategories.map((category) => <span className={category.status === "inactive" ? "inactive" : ""} key={category.id}>{category.name}</span>) : "Тағайындалмаған"}</div></dd></div>
@@ -70,10 +70,7 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
             <div><dt>Туған күні</dt><dd>{profile.birth_date ? formatDate(String(profile.birth_date)) : String(profile.birth_year ?? "—")}</dd></div>
           </dl>
         </section>
-        <section className="profile-internal">
-          <EyeOff size={21} />
-          <div><span>3-қабат</span><h2>Ішкі деректер қорғалған</h2><p>Қызметтік жазбалар, әкімшілік бағалар және аудит ақпараты мүше профилінде көрсетілмейді.</p></div>
-        </section>
+
       </aside>
     </div>
   </main>;

@@ -3,7 +3,7 @@ import { getDb } from "./index";
 import { Prisma } from "@/generated/prisma/client";
 import { branchScopeIds, departmentScopeIds, isFullAccess, isNationwideProfessionalAccess } from "@/lib/authorization";
 import type { AppUser } from "@/lib/types";
-import { defaultPublicContent, type PublicContentValues } from "@/lib/public-content";
+import { displayedContentValue, defaultPublicContent, type PublicContentValues } from "@/lib/public-content";
 
 export interface DashboardMetrics {
   registeredUsers: number;
@@ -799,9 +799,10 @@ export async function listUsersAndRoles() {
 export async function getPublicContentValues(): Promise<PublicContentValues> {
   await ensureDatabase();
   const values = defaultPublicContent();
-  const rows = await getDb().publicContent.findMany({ select: { key: true, value: true } });
+  const rows = await getDb().publicContent.findMany({ select: { key: true, value: true, updatedBy: true } });
   for (const row of rows) {
-    if (row.key in values) values[row.key as keyof PublicContentValues] = row.value;
+    const key = row.key as keyof PublicContentValues;
+    if (key in values) values[key] = displayedContentValue(key, row);
   }
   return values;
 }
