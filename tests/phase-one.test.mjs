@@ -104,7 +104,7 @@ test("Advanced people search combines age, workplace, position, status, and bran
     const html = visibleMarkup(await response.text());
     assert.match(html, /member@example\.test/);
     assert.doesNotMatch(html, /reserve@example\.test/);
-    assert.match(html, /Жалпы фильтрлі іздеу/);
+    assert.match(html, /<details[^>]*class="advanced-filters"[^>]*open/);
   } finally {
     await client.query("UPDATE person_profiles SET birth_date = NULL, workplace = 'Сынақ дерегі', position = 'Математика мұғалімі' WHERE id = 'person-member'");
     await client.end();
@@ -996,7 +996,8 @@ test("registration, email correction, verification, recovery, join routing, and 
     const application = await client.query("SELECT a.id, a.branch_id, a.joining_purpose, p.membership_status, (SELECT COUNT(*)::int FROM uploaded_documents WHERE application_id = a.id) AS document_count FROM membership_applications a JOIN person_profiles p ON p.id = a.person_id WHERE a.person_id = $1", [profileId]);
     assert.deepEqual(application.rows[0], { id: submittedResult.applicationId, branch_id: "branch-astana", joining_purpose: fields.joiningPurpose, membership_status: "applicant", document_count: 0 });
     const submittedJoin = await appRequest("/membership", { headers: { cookie: registered.cookie } });
-    assert.match(await submittedJoin.text(), /мүшелік өтініші бұрын жіберілген/i);
+    assert.ok([303, 307, 308].includes(submittedJoin.status));
+    assert.match(submittedJoin.headers.get("location") ?? "", /\/dashboard\/profile$/);
 
     const profileDocumentForm = new FormData();
     profileDocumentForm.append("document", new File(["%PDF-1.7\nprofile-document"], "profile-extra.pdf", { type: "application/pdf" }));
@@ -2523,8 +2524,8 @@ test("President can reopen a rejected application without erasing the original d
   assert.match(reviewHtml, new RegExp(reopenReason));
   assert.doesNotMatch(reviewHtml, /Қайта қарауға қайтару/);
   assert.equal((await appRequest(`/dashboard/members/${personId}`, { headers: authHeaders(presidentCookie) })).status, 200);
-  const restoredMemberList = visibleMarkup(await (await appRequest("/dashboard/members", { headers: authHeaders(presidentCookie) })).text());
-  assert.match(restoredMemberList, new RegExp(submitted.email.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  const restoredQueue = visibleMarkup(await (await appRequest("/dashboard/applications?status=awaiting_review", { headers: authHeaders(presidentCookie) })).text());
+  assert.match(restoredQueue, new RegExp(submitted.email.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
 });
 
 test("President can permanently erase another account regardless of membership status", async () => {
@@ -2764,6 +2765,92 @@ test("overview drill-downs, member profiles, safe archival, and controlled docum
     assert.equal(protectedArchive.status, 303);
     assert.match(protectedArchive.headers.get("location") ?? "", /error=protected/);
   } finally {
+    await client.end();
+  }
+});
+
+test("usability across member entry, application search, and administrator drill-downs", async () => {
+  const [admin, branch, member] = await Promise.all([
+    login("president@example.test"), login("branch@example.test"), login("member@example.test"),
+  ]);
+  async function page(path, cookie) {
+    const response = await appRequest(path, { headers: authHeaders(cookie) });
+    assert.equal(response.status, 200, path);
+    return visibleMarkup(await response.text());
+  }
+  const home = await page("/", member);
+  assert.match(home, /Жеке кабинетке өту/);
+  assert.doesNotMatch(home, /class="login-link"/);
+  const join = await appRequest("/membership", { headers: authHeaders(member) });
+  assert.match(join.headers.get("location") ?? "", /\/dashboard\/profile$/);
+
+  const overview = await page("/dashboard", admin);
+  assert.match(overview, /status=awaiting_review/);
+  assert.match(overview, /kind=members&amp;status=reserve/);
+  assert.match(overview, /kind=applications&amp;status=rejected/);
+  assert.match(overview, /Аккаунттан шығу/);
+  const applicant = await page("/dashboard/applications?q=APPLICANT%40example.test&status=awaiting_review", branch);
+  assert.match(applicant, /href="\/dashboard\/applications\/application-awaiting(?:\?[^"]*)?"/);
+  const otherBranch = await page("/dashboard/applications?branchId=branch-east&q=applicant", branch);
+  assert.doesNotMatch(otherBranch, /href="\/dashboard\/applications\/application-awaiting(?:\?[^"]*)?"/);
+  const reports = await page("/dashboard/reports?kind=applications&branchId=branch-almaty&status=awaiting_review&from=2026-01-01", admin);
+  assert.match(reports, /href="[^"]*branchId=branch-almaty[^"]*from=2026-01-01[^"]*kind=events"/);
+  const origin = "/dashboard/applications?q=applicant&status=awaiting_review";
+  const detail = "/dashboard/applications/application-awaiting";
+  assert.match(await page(detail + "?fromList=" + encodeURIComponent(origin), branch), /href="\/dashboard\/applications\?q=applicant&amp;status=awaiting_review"/);
+  const invalidDecision = await appRequest("/api/applications/application-awaiting/decision?fromList=" + encodeURIComponent(origin), {
+    method: "POST", headers: { cookie: branch, origin: "http://localhost" },
+    body: new URLSearchParams({ decision: "reserve", reason: "" }),
+  });
+  const destination = new URL(invalidDecision.headers.get("location"), "http://localhost");
+  assert.equal(invalidDecision.status, 303);
+  assert.equal(destination.searchParams.get("fromList"), origin);
+  assert.equal(destination.searchParams.get("error"), "validation");
+  assert.doesNotMatch(await page(detail + "?fromList=" + encodeURIComponent("//example.test/elsewhere"), branch), /href="\/\/example\.test/);
+});
+
+test("application pagination retains search and branch without duplicating tied rows", async () => {
+  const cookie = await login("branch@example.test");
+  const batch = "paging-" + randomUUID();
+  const client = new pg.Client({ connectionString: DATABASE_URL });
+  await client.connect();
+  try {
+    await client.query(`
+      INSERT INTO person_profiles (id, full_name, email, region_code, city_district, phone,
+        membership_status, branch_id, created_at, updated_at)
+      SELECT $1 || n, $1 || n, $1 || n || '@example.test', 'almaty', 'Алматы', '',
+        'registered_user', 'branch-almaty', now(), now()
+      FROM generate_series(1, 51) AS n`, [batch]);
+    const path = "/dashboard/applications?q=" + batch + "&status=registered_user&branchId=branch-almaty";
+    const first = visibleMarkup(await (await appRequest(path, { headers: authHeaders(cookie) })).text());
+    const next = first.match(/href="([^"]+)">Келесі бет</)?.[1]?.replaceAll("&amp;", "&");
+    assert.ok(next);
+    const params = new URL(next, "http://localhost").searchParams;
+    assert.equal(params.get("q"), batch);
+    assert.equal(params.get("branchId"), "branch-almaty");
+    assert.equal(params.get("status"), "registered_user");
+    const second = visibleMarkup(await (await appRequest(next, { headers: authHeaders(cookie) })).text());
+    const rowIds = html => [...html.matchAll(/class="table-person-link" href="\/dashboard\/members\/([^"?]+)(?:\?[^"]*)?"/g)].map(m => m[1]);
+    assert.equal(rowIds(first).length, 50);
+    assert.equal(rowIds(second).length, 1);
+    assert.equal(new Set([...rowIds(first), ...rowIds(second)]).size, 51);
+    assert.doesNotMatch(second, />Келесі бет</);
+    await client.query(`
+      INSERT INTO person_profiles (id, full_name, email, region_code, city_district, phone,
+        membership_status, branch_id, created_at, updated_at)
+      SELECT $1 || n, $1, $1 || n || '@example.test', 'almaty', 'Алматы', '',
+        'registered_user', 'branch-almaty', now(), now()
+      FROM generate_series(52, 101) AS n`, [batch]);
+    const report = visibleMarkup(await (await appRequest("/dashboard/reports?kind=members&q=" + batch, { headers: authHeaders(cookie) })).text());
+    const reportNext = report.match(/href="([^"]+)">Келесі бет</)?.[1]?.replaceAll("&amp;", "&");
+    assert.ok(reportNext);
+    assert.equal(new URL(reportNext, "http://localhost").searchParams.get("q"), batch);
+    const lastPage = visibleMarkup(await (await appRequest(reportNext, { headers: authHeaders(cookie) })).text());
+    const detailLinks = [...lastPage.matchAll(/class="report-person-link" href="([^"]+)"/g)];
+    assert.equal(detailLinks.length, 1);
+    assert.equal(new URL(detailLinks[0][1], "http://localhost").searchParams.get("fromList"), reportNext);
+  } finally {
+    await client.query("DELETE FROM person_profiles WHERE id LIKE $1", [batch + "%"]);
     await client.end();
   }
 });

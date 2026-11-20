@@ -112,16 +112,26 @@ export async function getDashboardMetrics(user: AppUser): Promise<DashboardMetri
   return { registeredUsers, applicants, awaitingReview, reserve, members, rejected };
 }
 
+function candidateSearch(query?: string): Prisma.PersonProfileWhereInput {
+  const term = query?.trim().slice(0, 120);
+  if (!term) return {};
+  return { OR: searchVariants(term).flatMap((value) => [
+    { fullName: { contains: value, mode: "insensitive" as const } },
+    { email: { contains: value, mode: "insensitive" as const } },
+  ]) };
+}
+
 export async function listApplicationCandidates(
   user: AppUser,
   limit = 50,
-  filters: { membershipStatus?: "registered_user" | "applicant"; branchId?: string } = {},
+  filters: { membershipStatus?: "registered_user" | "applicant"; branchId?: string; query?: string; offset?: number } = {},
 ): Promise<ApplicationCandidateListRow[]> {
   await ensureDatabase();
   const branches = filteredBranchIds(user, filters.branchId);
   const profiles = await getDb().personProfile.findMany({
     where: {
       archivedAt: null,
+      ...candidateSearch(filters.query),
       membershipStatus: filters.membershipStatus ?? { in: ["registered_user", "applicant"] },
       ...(branches ? { branchId: { in: branches } } : {}),
     },
@@ -135,7 +145,8 @@ export async function listApplicationCandidates(
         take: 1,
       },
     },
-    orderBy: [{ membershipStatus: "asc" }, { updatedAt: "desc" }],
+    orderBy: [{ membershipStatus: "asc" }, { updatedAt: "desc" }, { id: "asc" }],
+    skip: filters.offset,
     take: limit,
   });
   return profiles.map((profile) => ({
@@ -156,19 +167,20 @@ export async function listApplicationCandidates(
 export async function listApplications(
   user: AppUser,
   limit = 50,
-  filters: { status?: string; branchId?: string } = {},
+  filters: { status?: string; branchId?: string; query?: string; offset?: number } = {},
 ): Promise<ApplicationListRow[]> {
   await ensureDatabase();
   const branches = filteredBranchIds(user, filters.branchId);
   const applications = await getDb().membershipApplication.findMany({
     where: {
       archivedAt: null,
-      person: { archivedAt: null },
+      person: { archivedAt: null, ...candidateSearch(filters.query) },
       ...(branches ? { branchId: { in: branches } } : {}),
       ...(filters.status ? { status: filters.status } : {}),
     },
     include: { person: true, branch: true },
-    orderBy: { submittedAt: "desc" },
+    orderBy: [{ submittedAt: "desc" }, { id: "asc" }],
+    ...(filters.status ? { take: limit, skip: filters.offset } : {}),
   });
   const priority: Record<string, number> = { awaiting_review: 0, reserve: 1 };
   return applications

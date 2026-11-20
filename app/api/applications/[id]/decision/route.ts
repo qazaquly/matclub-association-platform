@@ -1,3 +1,4 @@
+import { withListOrigin } from "@/lib/list-navigation";
 import { z } from "zod";
 import { ensureDatabase } from "@/db/bootstrap";
 import { getDb } from "@/db";
@@ -18,7 +19,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     const { id } = await context.params;
     const form = await request.formData();
     const parsed = decisionSchema.safeParse(Object.fromEntries(form.entries()));
-    if (!parsed.success) return Response.redirect(new URL(`/dashboard/applications/${id}?error=validation`, request.url), 303);
+    if (!parsed.success) return Response.redirect(new URL(withListOrigin(`/dashboard/applications/${id}?error=validation`, new URL(request.url).searchParams.get("fromList")), request.url), 303);
 
     await ensureDatabase();
     const database = getDb();
@@ -28,7 +29,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     });
     if (!application || !canAccessBranch(user, application.branchId)) return new Response("Forbidden", { status: 403 });
     if (!new Set(["awaiting_review", "reserve"]).has(application.status)) {
-      return Response.redirect(new URL(`/dashboard/applications/${id}?error=final`, request.url), 303);
+      return Response.redirect(new URL(withListOrigin(`/dashboard/applications/${id}?error=final`, new URL(request.url).searchParams.get("fromList")), request.url), 303);
     }
 
     const membershipStatus = parsed.data.decision === "approved" ? "member" : parsed.data.decision;
@@ -60,7 +61,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
         }
       }
     });
-    return Response.redirect(new URL(`/dashboard/applications/${id}?success=decision`, request.url), 303);
+    return Response.redirect(new URL(withListOrigin(`/dashboard/applications/${id}?success=decision`, new URL(request.url).searchParams.get("fromList")), request.url), 303);
   } catch {
     return new Response("Unable to record the decision", { status: 400 });
   }

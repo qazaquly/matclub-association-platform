@@ -116,10 +116,11 @@ export async function buildReport(actor: AppUser, filters: ReportFilters): Promi
         branch: { select: { regionName: true } },
         professionalCategories: { where: { removedAt: null }, include: { category: { select: { name: true } } } },
       },
-      orderBy: { fullName: "asc" },
+      orderBy: [{ fullName: "asc" }, { id: "asc" }],
       take: 5000,
     });
     const mapped = rows.map((row) => ({
+      detailHref: "/dashboard/members/" + row.id,
       fullName: row.fullName, age: ageValue(row.birthDate, row.birthYear), email: row.email, phone: row.phone,
       branch: row.branch?.regionName ?? "", city: row.cityDistrict, workplace: row.workplace ?? "", position: row.position ?? "",
       categories: row.professionalCategories.map((item) => item.category.name).join(", "), status: statusLabel(row.membershipStatus), joinedAt: dateValue(row.membershipStartedAt),
@@ -143,9 +144,10 @@ export async function buildReport(actor: AppUser, filters: ReportFilters): Promi
         ...(containsAny(["fullName", "email", "workplace", "position", "cityDistrict"], filters.query) ? { person: { archivedAt: null, OR: containsAny(["fullName", "email", "workplace", "position", "cityDistrict"], filters.query) } } : {}),
         ...(range.from || range.endExclusive ? { submittedAt: { ...(range.from ? { gte: range.from } : {}), ...(range.endExclusive ? { lt: range.endExclusive } : {}) } } : {}),
       },
-      include: { branch: { select: { regionName: true } }, person: true }, orderBy: { submittedAt: "desc" }, take: 5000,
+      include: { branch: { select: { regionName: true } }, person: true }, orderBy: [{ submittedAt: "desc" }, { id: "asc" }], take: 5000,
     });
     const mapped = rows.map((row) => ({
+      detailHref: "/dashboard/applications/" + row.id,
       submittedAt: dateValue(row.submittedAt), fullName: row.person.fullName, email: row.person.email, phone: row.person.phone,
       branch: row.branch.regionName, city: row.person.cityDistrict, workplace: row.person.workplace ?? "", position: row.person.position ?? "",
       status: statusLabel(row.status), reviewedAt: dateValue(row.reviewedAt), reason: row.decisionReason ?? "",
@@ -170,7 +172,7 @@ export async function buildReport(actor: AppUser, filters: ReportFilters): Promi
         ...(range.from || range.endExclusive ? { startAt: { ...(range.from ? { gte: range.from } : {}), ...(range.endExclusive ? { lt: range.endExclusive } : {}) } } : {}),
       },
       include: { branch: { select: { regionName: true } }, result: { select: { participantCount: true } }, registrations: { where: { registrationStatus: "REGISTERED" }, select: { attendance: { select: { status: true } } } } },
-      orderBy: { startAt: "desc" }, take: 5000,
+      orderBy: [{ startAt: "desc" }, { id: "asc" }], take: 5000,
     });
     const mapped = rows.map((row) => ({
       startAt: dateValue(row.startAt), title: row.title, scope: eventScopeLabel(row.eventScope), branch: row.branch?.regionName ?? row.regionName ?? "Республикалық",
@@ -200,7 +202,7 @@ export async function buildReport(actor: AppUser, filters: ReportFilters): Promi
       branch: { select: { regionName: true } }, responsibleDepartment: { select: { nameKk: true } }, leaderProfile: { select: { fullName: true } },
       result: { select: { beneficiaryCount: true } }, _count: { select: { participants: true, stages: true } },
     },
-    orderBy: { startDate: "desc" }, take: 5000,
+    orderBy: [{ startDate: "desc" }, { id: "asc" }], take: 5000,
   });
   const mapped = rows.map((row) => ({
     startDate: dateValue(row.startDate), endDate: dateValue(row.endDate), title: row.title, code: row.code ?? "", scope: projectScopeLabel(row.projectScope),
