@@ -867,7 +867,7 @@ test("production worker boots and the database-backed public site renders the co
   const html = await response.text();
   assert.equal(response.status, 200, html);
   assert.match(html, /Республикалық математиктер бірлестігі/i);
-  assert.match(html, /Математика — ортақ тіл\..*Бірлестік — ортақ күш\./s);
+  assert.match(html.replace(/<!--.*?-->/gs, ""), /Математика — ортақ тіл\..*Бірлестік — ортақ күш\./s);
   assert.doesNotMatch(html, /Қазақстан математиктерінің республикалық қауымдастығы|ҚМРҚ/iu);
   assert.doesNotMatch(html, /olympiad registration|scoring protocol|diploma/i);
 
@@ -1338,7 +1338,7 @@ test("production bootstrap is explicit, one-time, duplicate-safe, and does not l
     BOOTSTRAP_ADMIN_CITY_DISTRICT: "Орталық әкімшілік",
     BOOTSTRAP_ADMIN_PHONE: "+7 700 000 00 01",
   };
-  const bootstrapCommand = [fileURLToPath(new URL("../node_modules/tsx/dist/cli.mjs", import.meta.url)), fileURLToPath(new URL("../scripts/bootstrap-production-admin.ts", import.meta.url))];
+  const bootstrapCommand = ["--import", "tsx", fileURLToPath(new URL("../scripts/bootstrap-production-admin.ts", import.meta.url))];
   const first = spawnSync(process.execPath, bootstrapCommand, { cwd: fileURLToPath(new URL("..", import.meta.url)), env: environment, encoding: "utf8" });
   assert.equal(first.status, 0, first.stderr);
   assert.doesNotMatch(`${first.stdout}\n${first.stderr}`, new RegExp(password.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
