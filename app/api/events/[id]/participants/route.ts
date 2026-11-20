@@ -147,9 +147,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       const registrationId = cleanText(form, "registrationId", 120, true)!;
       const status = String(form.get("status") ?? "");
       if (!(attendanceStatuses as readonly string[]).includes(status)) return result(request, id, false, "invalid-attendance");
-      const registration = await database.eventRegistration.findFirst({ where: { id: registrationId, eventId: id }, include: { attendance: true } });
-      if (!registration || registration.registrationStatus !== "REGISTERED") return result(request, id, false, "not-active", 409);
       await database.$transaction(async (transaction) => {
+        await transaction.$queryRaw`SELECT "id" FROM "event_registrations" WHERE "id" = ${registrationId} AND "event_id" = ${id} FOR UPDATE`;
+        const registration = await transaction.eventRegistration.findFirst({ where: { id: registrationId, eventId: id }, include: { attendance: true } });
+        if (!registration || registration.registrationStatus !== "REGISTERED") throw new Error("INACTIVE_REGISTRATION");
+        if (registration.attendance?.status === status) return;
         await transaction.eventAttendance.upsert({ where: { registrationId },
           create: { id: crypto.randomUUID(), registrationId, status, markedAt: status === "PENDING" ? null : now, markedBy: status === "PENDING" ? null : actor.id, method: status === "PENDING" ? null : "STAFF" },
           update: { status, markedAt: status === "PENDING" ? null : now, markedBy: status === "PENDING" ? null : actor.id, method: status === "PENDING" ? null : "STAFF" },
@@ -205,6 +207,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     return result(request, id, false, "invalid-action");
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
+    if (message === "INACTIVE_REGISTRATION") return result(request, id, false, "not-active", 409);
     if (message === "EVENT_FULL") return result(request, id, false, "full", 409);
     if (message.includes("Unique constraint")) return result(request, id, false, "seat-taken", 409);
     if (message.startsWith("INVALID_PARTICIPANT")) return result(request, id, false, "validation");

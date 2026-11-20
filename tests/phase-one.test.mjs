@@ -522,11 +522,14 @@ test("Phase 2.3 separates member registration, attendance, seating, reception, p
       body: new URLSearchParams({ action: "assign_seat", registrationId: guest.id, seatKey: `${unit.id}:1` }),
     });
     assert.equal(assignGuestSeat.status, 200);
-    const guestPresent = await appRequest(`/api/events/${eventId}/participants`, {
+    const markGuest = () => appRequest(`/api/events/${eventId}/participants`, {
       method: "POST", headers: { origin: "http://localhost", cookie: presidentCookie, accept: "application/json" },
       body: new URLSearchParams({ action: "attendance", registrationId: guest.id, status: "PRESENT" }),
     });
-    assert.equal(guestPresent.status, 200);
+    const marks = await Promise.all([markGuest(), markGuest()]);
+    for (const response of marks) assert.equal(response.status, 200);
+    const marksLogged = await client.query("SELECT count(*)::int AS total FROM audit_logs WHERE action_type = 'event.attendance.present' AND target_entity_id IN ($1, (SELECT id FROM event_attendance WHERE registration_id = $1))", [guest.id]);
+    assert.equal(marksLogged.rows[0].total, 1, "retrying attendance records only one transition");
     assert.equal((await client.query("SELECT COUNT(*)::int AS count FROM person_activities WHERE event_id = $1", [eventId])).rows[0].count, 0, "invited guests do not create member profile history");
     await appRequest(`/api/events/${eventId}/participants`, {
       method: "POST", headers: { origin: "http://localhost", cookie: presidentCookie, accept: "application/json" },
@@ -864,7 +867,7 @@ test("production worker boots and the database-backed public site renders the co
   const html = await response.text();
   assert.equal(response.status, 200, html);
   assert.match(html, /Республикалық математиктер бірлестігі/i);
-  assert.match(html, /Математика — ортақ тіл\..*Бірлестік — ортақ күш\./s);
+  assert.match(html.replace(/<!--.*?-->/gs, ""), /Математика — ортақ тіл\..*Бірлестік — ортақ күш\./s);
   assert.doesNotMatch(html, /Қазақстан математиктерінің республикалық қауымдастығы|ҚМРҚ/iu);
   assert.doesNotMatch(html, /olympiad registration|scoring protocol|diploma/i);
 
@@ -1335,7 +1338,7 @@ test("production bootstrap is explicit, one-time, duplicate-safe, and does not l
     BOOTSTRAP_ADMIN_CITY_DISTRICT: "Орталық әкімшілік",
     BOOTSTRAP_ADMIN_PHONE: "+7 700 000 00 01",
   };
-  const bootstrapCommand = [fileURLToPath(new URL("../node_modules/tsx/dist/cli.mjs", import.meta.url)), fileURLToPath(new URL("../scripts/bootstrap-production-admin.ts", import.meta.url))];
+  const bootstrapCommand = ["--import", "tsx", fileURLToPath(new URL("../scripts/bootstrap-production-admin.ts", import.meta.url))];
   const first = spawnSync(process.execPath, bootstrapCommand, { cwd: fileURLToPath(new URL("..", import.meta.url)), env: environment, encoding: "utf8" });
   assert.equal(first.status, 0, first.stderr);
   assert.doesNotMatch(`${first.stdout}\n${first.stderr}`, new RegExp(password.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
@@ -2859,4 +2862,31 @@ test("application pagination retains search and branch without duplicating tied 
     await client.query("DELETE FROM person_profiles WHERE id LIKE $1", [batch + "%"]);
     await client.end();
   }
+});
+
+test("daily workspace lists, creation views, member shortcuts and role views are reachable independently", async () => {
+  const [admin, member] = await Promise.all([login("president@example.test"), login("member@example.test")]);
+  async function page(path, cookie = admin) {
+    const result = await appRequest(path, { headers: authHeaders(cookie) });
+    assert.equal(result.status, 200, path);
+    return visibleMarkup(await result.text());
+  }
+  for (const [path, panel] of [["events", "event"], ["projects", "project"], ["content/news", "dynamic"]]) {
+    const base = "/dashboard/" + path;
+    const list = await page(base + "?q=example");
+    assert.doesNotMatch(list, new RegExp('class="panel ' + panel + '-create-panel"'));
+    assert.match(list, /q=example&amp;create=1/);
+    const form = await page(base + "?q=example&create=1");
+    assert.match(form, new RegExp('class="panel ' + panel + '-create-panel"'));
+    assert.ok(form.includes('href="' + base + '?q=example"'));
+  }
+  assert.doesNotMatch(await page("/dashboard/projects?create=1", member), /class="panel project-create-panel"/);
+  assert.match(await page("/dashboard", member), /href="\/dashboard\/profile#my-events"/);
+  assert.match(await page("/dashboard/profile", member), /id="my-events"/);
+  assert.doesNotMatch(await page("/dashboard/access"), /class="panel structure-panel"/);
+  assert.match(await page("/dashboard/access?view=structure"), /class="structure-management-grid"/);
+  assert.match(await page("/dashboard/access?view=departments"), /action="\/api\/access\/departments"/);
+  const audit = await page("/dashboard/audit?q=no-matching-workspace-event&from=2026-01-01");
+  assert.match(audit, /Бұл бетте жазба табылмады/);
+  assert.equal((await appRequest("/dashboard/audit?page=2", { headers: authHeaders(member) })).status, 404);
 });

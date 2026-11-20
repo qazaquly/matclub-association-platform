@@ -703,11 +703,22 @@ export async function getProfessionalCategoryAdminData() {
   }));
 }
 
-export async function listAuditLogs(limit = 80) {
+export async function listAuditLogs(limit = 80, filters: { q?: string; from?: Date; until?: Date; skip?: number } = {}) {
   await ensureDatabase();
   const logs = await getDb().auditLog.findMany({
+    where: {
+      createdAt: { gte: filters.from, lt: filters.until },
+      ...(filters.q ? { OR: [
+        { actionType: { contains: filters.q, mode: "insensitive" } },
+        { targetEntity: { contains: filters.q, mode: "insensitive" } },
+        { targetEntityId: { contains: filters.q, mode: "insensitive" } },
+        { reason: { contains: filters.q, mode: "insensitive" } },
+        { actor: { profile: { fullName: { contains: filters.q, mode: "insensitive" } } } },
+      ] } : {}),
+    },
+    skip: filters.skip ?? 0,
     include: { actor: { include: { profile: true } } },
-    orderBy: { createdAt: "desc" },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     take: limit,
   });
   return logs.map((log) => ({

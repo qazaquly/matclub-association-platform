@@ -6,7 +6,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { canManageDynamicContent, canManagePublicContent } from "@/lib/authorization";
 import { publicContentDefinitions } from "@/lib/public-content";
 
-export default async function PublicContentPage({ searchParams }: { searchParams: Promise<{ success?: string; error?: string }> }) {
+export default async function PublicContentPage({ searchParams }: { searchParams: Promise<{ view?: string; success?: string; error?: string }> }) {
   const actor = (await getCurrentUser())!;
   const fixedAccess = canManagePublicContent(actor);
   const dynamicAccess = canManageDynamicContent(actor);
@@ -24,7 +24,8 @@ export default async function PublicContentPage({ searchParams }: { searchParams
       <a href="/dashboard/content/partners"><Handshake size={23} /><div><strong>Серіктестер</strong><small>Логотип, реттік орын және көріну</small></div></a>
       <a href="/dashboard/content/projects"><FolderKanban size={23} /><div><strong>Ашық жобалар</strong><small>Қоғамдық ақпарат қабаты</small></div></a>
     </section>}
-    {fixedAccess && <>
+    {fixedAccess && <a className="section-jump" href={state.view === "text" ? "/dashboard/content" : "?view=text"}>{state.view === "text" ? "Бөлімдерге оралу" : "Сайт мәтіндерін өңдеу"}</a>}
+    {fixedAccess && (state.view === "text" || state.error || !dynamicAccess) && <>
     <div className="content-admin-note"><FilePenLine size={22} /><p>Бұл бөлім тек мәтіндерді, батырма белгілерін және қауіпсіз сілтемелерді өзгертеді. Бет құрылымы, стиль, код және қолданба логикасы өзгертілмейді.</p></div>
     <form className="content-admin-form" action="/api/public-content" method="post">
       {[...sections.entries()].map(([section, definitions]) => <section className="panel content-admin-section" key={section}>

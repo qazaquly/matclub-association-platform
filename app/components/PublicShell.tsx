@@ -9,6 +9,7 @@ const primaryLinks = [
   [translate(defaultLocale, "association"), "/about"],
   [translate(defaultLocale, "structure"), "/structure"],
   [translate(defaultLocale, "branches"), "/branches"],
+  ["Іс-шаралар", "/events"],
   [translate(defaultLocale, "projects"), "/projects"],
   [translate(defaultLocale, "news"), "/news"],
 ] as const;

@@ -19,7 +19,7 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
   const [items, state] = await Promise.all([listPublicEvents(), searchParams]);
   const now = new Date();
   const view = state.view === "calendar" ? "calendar" : "list";
-  const period = ["upcoming", "past", "all"].includes(state.period ?? "") ? state.period! : "upcoming";
+  const period = ["upcoming", "past", "all"].includes(state.period ?? "") ? state.period! : items.some((item) => item.endAt >= now && item.status !== "COMPLETED") ? "upcoming" : "all";
   const regions = [...new Set(items.map((item) => item.branch?.regionName ?? item.regionName).filter((value): value is string => Boolean(value)))].sort((a, b) => a.localeCompare(b, "kk"));
   const filtered = items.filter((item) => {
     if (state.region && (item.branch?.regionName ?? item.regionName) !== state.region) return false;
@@ -27,7 +27,7 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
     if (period === "past") return item.endAt < now || item.status === "COMPLETED";
     return true;
   });
-  const selectedMonth = /^\d{4}-\d{2}$/.test(state.month ?? "") ? state.month! : monthKey(now);
+  const selectedMonth = /^\d{4}-(0[1-9]|1[0-2])$/.test(state.month ?? "") ? state.month! : monthKey(now);
   const [year, month] = selectedMonth.split("-").map(Number);
   const dayCount = new Date(Date.UTC(year, month, 0)).getUTCDate();
   const firstDay = new Date(`${selectedMonth}-01T12:00:00+05:00`).getUTCDay();
@@ -45,6 +45,7 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
         <button className="button button-primary" type="submit">Көрсету</button>
       </form>
 
+      {view === "calendar" && monthItems.length === 0 && <p className="empty-content">Бұл айда жарияланған іс-шара жоқ. <a href="?period=all">Тізімді ашу</a></p>}
       {view === "calendar" ? <div className="event-calendar" aria-label={`${selectedMonth} іс-шаралар күнтізбесі`}>
         <div className="calendar-weekdays">{["Дс", "Сс", "Ср", "Бс", "Жм", "Сб", "Жс"].map((day) => <span key={day}>{day}</span>)}</div>
         <div className="calendar-grid">{Array.from({ length: mondayOffset }, (_, index) => <span className="calendar-day empty" key={`empty-${index}`} />)}{Array.from({ length: dayCount }, (_, index) => {
@@ -58,7 +59,7 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
         <div className="event-public-date"><CalendarDays size={18} /><span><strong>{formatDate(item.startAt.toISOString())}</strong><small>{formatDate(item.startAt.toISOString(), true).split(", ")[1]}</small></span></div>
         <div className="event-public-copy"><div className="event-meta-row"><span>{eventScopeLabel(item.eventScope)}</span><span>{eventFormatLabel(item.eventFormat)}</span>{item.status !== "PUBLISHED" && <span className={`event-public-status ${item.status.toLowerCase()}`}>{eventStatusLabel(item.status)}</span>}</div><h2>{item.title}</h2><p>{item.summary}</p><small><MapPin size={13} /> {eventLocation(item)}</small></div>
         <a className="event-public-link" href={`/events/${item.slug}`}>Толық ақпарат <ArrowRight size={16} /></a>
-      </article>)}{filtered.length === 0 && <div className="public-empty-state"><CalendarDays size={28} /><h2>Бұл сүзгіге сәйкес іс-шара жоқ</h2><p>Басқа кезеңді немесе өңірді таңдаңыз.</p></div>}</div>}
+      </article>)}{filtered.length === 0 && <div className="public-empty-state"><CalendarDays size={28} /><h2>{items.length ? "Бұл сүзгіге сәйкес іс-шара жоқ" : "Әзірге жарияланған іс-шара жоқ"}</h2>{items.length > 0 && <a href="?period=all">Барлық іс-шараны көру</a>}</div>}</div>}
       <div className="event-view-note">{view === "calendar" ? <CalendarDays size={16} /> : <List size={16} />} Тек жарияланған іс-шаралар көрсетіледі.</div>
     </section>
   </main></PublicShell>;

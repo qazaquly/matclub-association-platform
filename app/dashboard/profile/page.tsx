@@ -27,9 +27,10 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
     </div>
     {state.success && <div className="dash-alert success">Профиль жаңартылды. Өзгеріс аудит журналында сақталды.</div>}
     {errorMessage && <div className="dash-alert error">{errorMessage}</div>}
+    <nav className="task-links" aria-label="Профиль бөлімдері"><a href="#profile-fields">Жеке деректер</a><a href="#my-events">Менің іс-шараларым</a><a href="#my-history">Қызмет тарихы</a><a href="#my-docs">Құжаттарым</a></nav>
     <div className="profile-layout">
       <div className="profile-main-column">
-      <section className="panel">
+      <section className="panel" id="profile-fields">
         <div className="panel-heading">
           <div><span><PencilLine size={15} /> 1-қабат</span><h2>Өзгертуге болатын деректер</h2></div>
           <span className="visibility-label"><Eye size={15} /> Сізге көрінеді</span>
@@ -52,9 +53,9 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
           <button className="button button-primary" type="submit">Өзгерістерді сақтау</button>
         </form>
       </section>
-      <section className="panel profile-events"><div className="panel-heading"><div><span>Іс-шаралар</span><h2><CalendarCheck size={18} /> Менің тіркелулерім</h2></div></div><div className="profile-event-list">{profile.eventRegistrations.map((registration) => <a href={`/events/${registration.eventSlug}`} key={registration.id}><div><strong>{registration.eventTitle}</strong><span>{formatDate(registration.startAt, true)}</span></div><small>{attendanceStatusLabel(registration.attendanceStatus)}{registration.seat ? ` · Орын: ${registration.seat}` : ""}</small></a>)}{profile.eventRegistrations.length === 0 && <p className="muted">Белсенді тіркелу жоқ.</p>}</div></section>
-      <section className="panel profile-events"><div className="panel-heading"><div><span>Расталған тарих</span><h2>Бірлестіктегі қызметім</h2></div></div><div className="profile-event-list">{profile.activities.map((activity) => activity.eventSlug ? <a href={`/events/${activity.eventSlug}`} key={activity.id}><div><strong>{activity.title}</strong><span>{formatDate(activity.occurredAt, true)}</span></div><small>Іс-шараға нақты қатысты</small></a> : <div className="profile-activity-item" key={activity.id}><div><strong>{activity.title}</strong><span>{formatDate(activity.occurredAt, true)}</span></div><small>{activity.description ?? "Жобаға қатысты"}</small></div>)}{profile.activities.length === 0 && <p className="muted">Расталған қызмет тарихы әлі жоқ.</p>}</div></section>
-      <ProfileDocuments initialDocuments={profile.documents} />
+      <section className="panel profile-events" id="my-events"><div className="panel-heading"><div><span>Іс-шаралар</span><h2><CalendarCheck size={18} /> Менің тіркелулерім</h2></div></div><div className="profile-event-list">{profile.eventRegistrations.map((registration) => <a href={`/events/${registration.eventSlug}`} key={registration.id}><div><strong>{registration.eventTitle}</strong><span>{formatDate(registration.startAt, true)}</span></div><small>{attendanceStatusLabel(registration.attendanceStatus)}{registration.seat ? ` · Орын: ${registration.seat}` : ""}</small></a>)}{profile.eventRegistrations.length === 0 && <p className="muted">Белсенді тіркелу жоқ.</p>}</div></section>
+      <section className="panel profile-events" id="my-history"><div className="panel-heading"><div><span>Расталған тарих</span><h2>Бірлестіктегі қызметім</h2></div></div><div className="profile-event-list">{profile.activities.map((activity) => activity.eventSlug ? <a href={`/events/${activity.eventSlug}`} key={activity.id}><div><strong>{activity.title}</strong><span>{formatDate(activity.occurredAt, true)}</span></div><small>Іс-шараға нақты қатысты</small></a> : <div className="profile-activity-item" key={activity.id}><div><strong>{activity.title}</strong><span>{formatDate(activity.occurredAt, true)}</span></div><small>{activity.description ?? "Жобаға қатысты"}</small></div>)}{profile.activities.length === 0 && <p className="muted">Расталған қызмет тарихы әлі жоқ.</p>}</div></section>
+      <div id="my-docs"><ProfileDocuments initialDocuments={profile.documents} /></div>
       </div>
       <aside>
         <section className="profile-official">
