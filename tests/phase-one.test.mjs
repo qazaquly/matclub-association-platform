@@ -1992,7 +1992,7 @@ test("authoritative VP mapping, branch scoping, private documents, audit access,
     ORDER BY r.slug
   `);
   const permissionsByRole = Object.fromEntries(rolePermissions.rows.map((row) => [row.slug, row.permissions]));
-  assert.deepEqual(permissionsByRole.vice_president_1, ["department.professional.read"]);
+  assert.deepEqual(permissionsByRole.vice_president_1, ["department.professional.read", "institutional_documents.read"]);
   assert.deepEqual(permissionsByRole.vice_president_2, permissionsByRole.president);
 
   const staleDepartmentAssignment = await client.query("SELECT id FROM person_department_assignments WHERE person_id = 'person-president' AND department_id = 'dept-content' AND ended_at IS NULL LIMIT 1");
