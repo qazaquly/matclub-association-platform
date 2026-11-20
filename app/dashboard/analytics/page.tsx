@@ -6,8 +6,8 @@ import { canViewReports, isFullAccess } from "@/lib/authorization";
 import { getManagementAnalytics } from "@/db/analytics";
 import { listBranches } from "@/db/queries";
 
-function Metric({ label, value, note, change, icon: Icon }: { label: string; value: string | number; note: string; change?: number; icon: typeof UsersRound }) {
-  return <article className="analytics-metric"><span><Icon size={19} /></span><div><small>{label}</small><strong>{typeof value === "number" ? value.toLocaleString("kk-KZ") : value}</strong><p>{note}</p></div>{change !== undefined && <em className={change >= 0 ? "positive" : "negative"}>{change >= 0 ? <TrendingUp size={13} /> : <TrendingDown size={13} />}{change > 0 ? "+" : ""}{change}%</em>}</article>;
+function Metric({ label, value, note, change, icon: Icon }: { label: string; value: string | number; note: string; change?: number | null; icon: typeof UsersRound }) {
+  return <article className="analytics-metric"><span><Icon size={19} /></span><div><small>{label}</small><strong>{typeof value === "number" ? value.toLocaleString("kk-KZ") : value}</strong><p>{note}</p></div>{change === null && <em>Алдыңғы кезеңде 0</em>}{typeof change === "number" && <em className={change >= 0 ? "positive" : "negative"}>{change >= 0 ? <TrendingUp size={13} /> : <TrendingDown size={13} />}{change > 0 ? "+" : ""}{change}%</em>}</article>;
 }
 
 export default async function AnalyticsPage({ searchParams }: { searchParams: Promise<{ branchId?: string; from?: string; to?: string }> }) {
@@ -45,7 +45,7 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
 
     <section className="analytics-grid">
       <article className="panel analytics-activity-panel">
-        <div className="panel-heading"><div><p>Айлық қозғалыс</p><h2>Мүше, іс-шара және жоба динамикасы</h2></div><div className="analytics-legend"><span className="members">Жаңа мүше</span><span className="events">Іс-шара</span><span className="projects">Жоба</span></div></div>
+        <div className="panel-heading"><div><p>{period.from.slice(0, 7) < months[0]?.key ? "Таңдалған кезеңнің соңғы 24 айы" : "Айлық қозғалыс"}</p><h2>Мүше, іс-шара және жоба динамикасы</h2></div><div className="analytics-legend"><span className="members">Жаңа мүше</span><span className="events">Іс-шара</span><span className="projects">Жоба</span></div></div>
         <div className="analytics-bars">{months.map((month) => <div className="analytics-month" key={month.key}><div><i className="members" title={`${month.members} жаңа мүше`} style={{ height: `${Math.max(month.members ? 6 : 0, month.members / activityMax * 100)}%` }} /><i className="events" title={`${month.events} іс-шара`} style={{ height: `${Math.max(month.events ? 6 : 0, month.events / activityMax * 100)}%` }} /><i className="projects" title={`${month.projects} жоба`} style={{ height: `${Math.max(month.projects ? 6 : 0, month.projects / activityMax * 100)}%` }} /></div><small>{month.label}</small></div>)}</div>
       </article>
       <article className="panel analytics-attention">

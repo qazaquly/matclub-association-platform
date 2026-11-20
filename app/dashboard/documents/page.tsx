@@ -1,4 +1,7 @@
 /* eslint-disable @next/next/no-html-link-for-pages -- Use native navigation with Vinext. */
+import { withListOrigin } from "@/lib/list-navigation";
+import { directoryPage, directoryPageSize, directoryUrl } from "@/lib/directory-pagination";
+import { DirectoryPagination } from "@/app/components/DirectoryPagination";
 import { Archive, FileStack, FileText, Plus, Search } from "lucide-react";
 import { notFound } from "next/navigation";
 import { InstitutionalDocumentForm } from "@/app/components/InstitutionalDocumentForm";
@@ -16,7 +19,7 @@ import {
   institutionalDocumentTypeLabel, institutionalDocumentTypes,
 } from "@/lib/institutional-documents";
 
-interface SearchState { q?: string; documentType?: string; status?: string; accessLevel?: string; branchId?: string; departmentId?: string; from?: string; to?: string; success?: string; error?: string }
+interface SearchState { page?: string; q?: string; documentType?: string; status?: string; accessLevel?: string; branchId?: string; departmentId?: string; from?: string; to?: string; success?: string; error?: string }
 
 export default async function InstitutionalDocumentsPage({ searchParams }: { searchParams: Promise<SearchState> }) {
   const actor = (await getCurrentUser())!;
@@ -25,7 +28,12 @@ export default async function InstitutionalDocumentsPage({ searchParams }: { sea
   const department = canManageDepartmentInstitutionalDocuments(actor);
   if (!canReadInstitutionalDocuments(actor) && !global && !branch && !department) notFound();
   const state = await searchParams;
-  const [documents, options] = await Promise.all([listInstitutionalDocuments(actor, state), getInstitutionalDocumentOptions(actor)]);
+  const page = directoryPage(state.page);
+  const offset = (page - 1) * directoryPageSize;
+  const url = (number: number) => directoryUrl("/dashboard/documents", { ...state }, ["q", "branchId", "departmentId", "status", "accessLevel", "documentType", "from", "to"], number);
+  const [results, options] = await Promise.all([listInstitutionalDocuments(actor, state, directoryPageSize + 1, offset), getInstitutionalDocumentOptions(actor)]);
+  const origin = url(page);
+  const documents = results.slice(0, directoryPageSize);
   const canCreate = global || branch || department;
   const archived = state.status === "ARCHIVED";
   return <main className="dashboard-content">
@@ -47,7 +55,8 @@ export default async function InstitutionalDocumentsPage({ searchParams }: { sea
     </form></details>
     <div className={`document-registry-layout ${canCreate ? "" : "single"}`}>
       {canCreate && !archived && <details className="panel document-create-panel" open={Boolean(state.error)}><summary><Plus size={17} /> Жаңа ресми құжат тіркеу</summary><InstitutionalDocumentForm action="/api/institutional-documents" branches={options.branches} departments={options.departments} canManageGlobal={global} canManageBranch={branch} canManageDepartment={department} includeFile /></details>}
-      <section className="panel document-registry-list"><div className="panel-heading"><div><span>{archived ? "Сақталған тарих" : "Қолданыстағы қор"}</span><h2>{documents.length} құжат</h2></div>{archived && <Archive size={20} />}</div><div>{documents.map((document) => <a href={`/dashboard/documents/${document.id}`} key={document.id} className="document-registry-row"><span className={`document-type-mark ${document.documentType.toLowerCase()}`}><FileText size={19} /></span><span className="document-row-main"><strong>{document.title}</strong><small>№ {document.documentNumber} · {formatDate(document.documentDate.toISOString())} · {institutionalDocumentTypeLabel(document.documentType)}</small><small>{document.branch?.regionName ?? document.responsibleDepartment?.nameKk ?? institutionalDocumentScopeLabel(document.scopeType)}</small></span><span className="document-row-meta"><i>{institutionalDocumentAccessLabel(document.accessLevel)}</i><small>{document._count.versions} нұсқа</small></span></a>)}{documents.length === 0 && <div className="empty-content">Бұл сүзгі бойынша қолжетімді құжат жоқ.</div>}</div></section>
+      <section className="panel document-registry-list"><div className="panel-heading"><div><span>{archived ? "Сақталған тарих" : "Қолданыстағы қор"}</span><h2>{documents.length ? `${offset + 1}–${offset + documents.length}` : 0} құжат</h2></div>{archived && <Archive size={20} />}</div><div>{documents.map((document) => <a href={withListOrigin(`/dashboard/documents/${document.id}`, origin.includes("?") ? origin : undefined)} key={document.id} className="document-registry-row"><span className={`document-type-mark ${document.documentType.toLowerCase()}`}><FileText size={19} /></span><span className="document-row-main"><strong>{document.title}</strong><small>№ {document.documentNumber} · {formatDate(document.documentDate.toISOString())} · {institutionalDocumentTypeLabel(document.documentType)}</small><small>{document.branch?.regionName ?? document.responsibleDepartment?.nameKk ?? institutionalDocumentScopeLabel(document.scopeType)}</small></span><span className="document-row-meta"><i>{institutionalDocumentAccessLabel(document.accessLevel)}</i><small>{document._count.versions} нұсқа</small></span></a>)}{documents.length === 0 && <div className="empty-content">Бұл сүзгі бойынша қолжетімді құжат жоқ.</div>}</div></section>
     </div>
+    <DirectoryPagination page={page} more={results.length > directoryPageSize} url={url} />
   </main>;
 }

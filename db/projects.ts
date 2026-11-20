@@ -71,7 +71,7 @@ export async function getProjectFormOptions(actor: AppUser) {
   const [branches, departments, people, publicProjects] = await Promise.all([
     database.branch.findMany({ where: { archivedAt: null, status: "active", ...(global ? {} : { id: { in: branchIds } }) }, select: { id: true, regionName: true }, orderBy: { regionName: "asc" } }),
     database.department.findMany({ where: { archivedAt: null, ...(global ? {} : { id: { in: departmentIds } }) }, select: { id: true, nameKk: true }, orderBy: { nameKk: "asc" } }),
-    database.personProfile.findMany({ where: peopleWhere, select: { id: true, fullName: true, branchId: true }, orderBy: { fullName: "asc" }, take: 2_000 }),
+    database.personProfile.findMany({ where: peopleWhere, select: { id: true, fullName: true, branchId: true }, orderBy: { fullName: "asc" } }),
     global ? database.publicProject.findMany({ where: { archivedAt: null }, select: { id: true, title: true, status: true }, orderBy: { title: "asc" } }) : [],
   ]);
   return { branches, departments, people, publicProjects };
@@ -88,8 +88,7 @@ export async function listEligibleProjectMembers(actor: AppUser, project: { proj
         departmentAssignments: { some: { endedAt: null, departmentId: project.responsibleDepartmentId } },
       } : { id: actor.profileId }),
     },
-    select: { id: true, fullName: true, email: true, branch: { select: { regionName: true } } },
+    select: { id: true, fullName: true, branch: { select: { regionName: true } } },
     orderBy: { fullName: "asc" },
-    take: 2_000,
   });
 }

@@ -40,7 +40,7 @@ export async function getEventFormOptions(actor: AppUser) {
     }),
     database.personProfile.findMany({
       where: { archivedAt: null, ...(global ? {} : { branchId: { in: scopes } }) },
-      select: { id: true, fullName: true, branchId: true }, orderBy: { fullName: "asc" }, take: 1_000,
+      select: { id: true, fullName: true, branchId: true }, orderBy: { fullName: "asc" },
     }),
     global ? database.department.findMany({ where: { archivedAt: null }, select: { id: true, nameKk: true }, orderBy: { nameKk: "asc" } }) : [],
   ]);
