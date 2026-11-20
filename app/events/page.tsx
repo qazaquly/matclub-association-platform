@@ -35,7 +35,7 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
   const monthItems = filtered.filter((item) => monthKey(item.startAt) === selectedMonth);
 
   return <PublicShell><main>
-    <section className="page-hero"><div className="container narrow"><p className="eyebrow">Іс-шаралар</p><h1>Бір күнтізбе — біртұтас институционалдық тарих</h1><p>Республикалық және филиалдық кездесулер, кәсіби талқылаулар мен бірлестік шаралары.</p></div></section>
+    <section className="page-hero"><div className="container narrow"><p className="eyebrow">Іс-шаралар</p><h1>Іс-шаралар күнтізбесі</h1><p>Республикалық және филиалдық кездесулер, кәсіби талқылаулар мен бірлестік шаралары.</p></div></section>
     <section className="section container events-public-section">
       <form className="events-public-filter" method="get">
         <label>Кезең<select name="period" defaultValue={period}><option value="upcoming">Алдағы</option><option value="past">Өткен</option><option value="all">Барлығы</option></select></label>
