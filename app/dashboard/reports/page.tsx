@@ -49,7 +49,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
   ].filter(Boolean);
 
   return <main className="dashboard-content report-page">
-    <div className="dash-page-heading"><div><p>Басқару есебі</p><h1>Есептер және дерек шығару</h1></div><span className="record-count">{report.rows.length} жол</span></div>
+    <div className="dash-page-heading"><div><p>Басқару есебі</p><h1>Есептер</h1></div><span className="record-count">{report.rows.length} жол</span></div>
     <nav className="report-tabs" aria-label="Есеп түрлері">{(Object.keys(kindLabels) as ReportKind[]).map((kind) => <a className={filters.kind === kind ? "active" : ""} aria-current={filters.kind === kind ? "page" : undefined} href={`/dashboard/reports?${queryString({ branchId: filters.branchId, q: filters.query, from: filters.from, to: filters.to, status: kind === filters.kind ? filters.status : undefined }, { kind })}`} key={kind}>{kindLabels[kind]}</a>)}</nav>
     <details className="report-filter-panel">
       <summary>Есеп сүзгілері <span>{filterLabels.length ? filterLabels.join(" · ") : "Барлық дерек"}</span></summary>
@@ -73,7 +73,6 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
         {page > 1 && <a href={reportUrl(page - 1)}>Алдыңғы бет</a>}<span>{page} / {pageCount}</span>
         {page < pageCount && <a href={reportUrl(page + 1)}>Келесі бет</a>}
       </nav>}
-      {report.rows.length === 5000 && <p className="report-preview-note">Бір есепке 5000 жолға дейін кіреді. Нақтылау үшін өңірді, мәртебені немесе мерзімді таңдаңыз.</p>}
     </section>
   </main>;
 }

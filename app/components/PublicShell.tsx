@@ -38,7 +38,7 @@ export async function PublicShell({ children, content: suppliedContent }: { chil
             <a className="header-cta" href={primaryHref}>{primaryLabel}</a>
             <details className="mobile-menu">
               <summary aria-label="Мәзірді ашу"><Menu size={22} /><ChevronDown size={14} /></summary>
-              <nav>{primaryLinks.map(([label, href]) => <a href={href} key={href}>{label}</a>)}<a href={accountHref}>{accountLabel}</a></nav>
+              <nav>{primaryLinks.map(([label, href]) => <a href={href} key={href}>{label}</a>)}<a href={accountHref}>{accountLabel}</a>{!cabinet && primaryHref !== accountHref && <a href={primaryHref}>{primaryLabel}</a>}</nav>
             </details>
           </div>
         </div>

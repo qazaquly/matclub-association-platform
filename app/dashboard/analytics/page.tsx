@@ -24,7 +24,7 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
   const categoryMax = Math.max(1, ...categories.map((item) => item.value));
 
   return <main className="dashboard-content analytics-page">
-    <div className="dash-page-heading"><div><p>Нақты дерекке негізделген шолу</p><h1>Басқару көрсеткіштері</h1></div><span className="record-count">{period.from} — {period.to}</span></div>
+    <div className="dash-page-heading"><div><h1>Басқару көрсеткіштері</h1></div><span className="record-count">{period.from} — {period.to}</span></div>
     <form className="analytics-filter" method="get">
       <label>Өңір<select name="branchId" defaultValue={state.branchId ?? ""}><option value="">Барлық рұқсат етілген өңір</option>{branches.map((branch) => <option value={branch.id} key={branch.id}>{branch.regionName}</option>)}</select></label>
       <label>Басталған күні<input type="date" name="from" defaultValue={period.from} /></label>

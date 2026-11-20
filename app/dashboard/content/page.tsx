@@ -19,14 +19,14 @@ export default async function PublicContentPage({ searchParams }: { searchParams
     {state.success && <div className="dash-alert success">Мазмұн сақталды, жарияланды және аудит журналына тіркелді.</div>}
     {state.error && <div className="dash-alert error">Мазмұн сақталмады. Мәтін мен сілтемелерді тексеріңіз.</div>}
     {dynamicAccess && <section className="dynamic-content-catalog">
-      <a href="/dashboard/content/news"><Newspaper size={23} /><div><strong>Жаңалықтар</strong><small>Жоба, жариялау және архив</small></div></a>
-      <a href="/dashboard/content/publications"><BookOpen size={23} /><div><strong>Жарияланымдар</strong><small>Материалдар және қауіпсіз сілтемелер</small></div></a>
-      <a href="/dashboard/content/partners"><Handshake size={23} /><div><strong>Серіктестер</strong><small>Логотип, реттік орын және көріну</small></div></a>
-      <a href="/dashboard/content/projects"><FolderKanban size={23} /><div><strong>Ашық жобалар</strong><small>Қоғамдық ақпарат қабаты</small></div></a>
+      <a href="/dashboard/content/news"><Newspaper size={23} /><div><strong>Жаңалықтар</strong><small>Жаңалық жазу және жариялау</small></div></a>
+      <a href="/dashboard/content/publications"><BookOpen size={23} /><div><strong>Жарияланымдар</strong><small>Мақалалар мен әдістемелік материалдар</small></div></a>
+      <a href="/dashboard/content/partners"><Handshake size={23} /><div><strong>Серіктестер</strong><small>Серіктестер тізімі мен логотиптері</small></div></a>
+      <a href="/dashboard/content/projects"><FolderKanban size={23} /><div><strong>Ашық жобалар</strong><small>Сайтта көрсетілетін жобалар</small></div></a>
     </section>}
     {fixedAccess && <a className="section-jump" href={state.view === "text" ? "/dashboard/content" : "?view=text"}>{state.view === "text" ? "Бөлімдерге оралу" : "Сайт мәтіндерін өңдеу"}</a>}
     {fixedAccess && (state.view === "text" || state.error || !dynamicAccess) && <>
-    <div className="content-admin-note"><FilePenLine size={22} /><p>Бұл бөлім тек мәтіндерді, батырма белгілерін және қауіпсіз сілтемелерді өзгертеді. Бет құрылымы, стиль, код және қолданба логикасы өзгертілмейді.</p></div>
+    <div className="content-admin-note"><FilePenLine size={22} /><p>Мәтінді немесе сілтемені өңдеп, өзгерісті сақтаңыз.</p></div>
     <form className="content-admin-form" action="/api/public-content" method="post">
       {[...sections.entries()].map(([section, definitions]) => <section className="panel content-admin-section" key={section}>
         <div className="panel-heading"><div><span>Жария мазмұн</span><h2>{section}</h2></div></div>
@@ -34,8 +34,8 @@ export default async function PublicContentPage({ searchParams }: { searchParams
           {definitions.map((definition) => <label className={definition.kind === "textarea" ? "content-field-wide" : ""} key={definition.key}>
             <span>{definition.label}</span>
             {definition.kind === "textarea"
-              ? <textarea name={definition.key} defaultValue={values[definition.key]} required maxLength={definition.maxLength} rows={4} />
-              : <input name={definition.key} defaultValue={values[definition.key]} required maxLength={definition.maxLength} inputMode={definition.kind === "destination" ? "url" : "text"} />}
+              ? <textarea id={definition.key} name={definition.key} defaultValue={values[definition.key]} required maxLength={definition.maxLength} rows={4} />
+              : <input id={definition.key} name={definition.key} defaultValue={values[definition.key]} required={!definition.key.startsWith("contact.")} type={definition.key === "contact.email" ? "email" : definition.key === "contact.phone" ? "tel" : "text"} maxLength={definition.maxLength} inputMode={definition.kind === "destination" ? "url" : definition.key === "contact.email" ? "email" : definition.key === "contact.phone" ? "tel" : "text"} />}
             <small>{definition.kind === "destination" ? "Ішкі /жол немесе қауіпсіз http(s) сілтемесі" : `${definition.maxLength} таңбаға дейін`}</small>
           </label>)}
         </div>

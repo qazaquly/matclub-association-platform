@@ -141,7 +141,7 @@ test("Management reports export scoped Excel and PDF files", async () => {
   const page = await appRequest("/dashboard/reports?kind=members", { headers: authHeaders(branchCookie) });
   assert.equal(page.status, 200);
   const html = visibleMarkup(await page.text());
-  assert.match(html, /Есептер және дерек шығару/);
+  assert.match(html, /<h1>Есептер<\/h1>/);
   assert.match(html, /Excel/);
   assert.match(html, /PDF/);
 
@@ -1397,6 +1397,7 @@ test("structured public content is capability-gated, validated, published immedi
     assert.ok(original);
     const changedRows = rows.rows.map((row) => [
       row.key,
+      row.key === "contact.email" ? "contact@example.test" : row.key === "contact.phone" ? "+7 700 000 00 00" :
       row.key.endsWith("Destination") || row.key.endsWith("destination") ? row.value : `${row.value} Сынақ.`,
     ]);
     const changed = changedRows.find(([key]) => key === "home.about.heading")?.[1];
@@ -1420,6 +1421,10 @@ test("structured public content is capability-gated, validated, published immedi
     const presidentUpdate = await mutation(presidentCookie, form());
     assert.equal(presidentUpdate.status, 303);
     assert.match(presidentUpdate.headers.get("location") ?? "", /\/dashboard\/content\?success=published/);
+    const contact = visibleMarkup(await (await appRequest("/contact")).text());
+    assert.ok(contact.includes('href="mailto:contact@example.test"'));
+    assert.ok(contact.includes('href="tel:+77000000000"'));
+
     const publishedHome = await appRequest("/");
     assert.equal(publishedHome.status, 200);
     assert.match(await publishedHome.text(), new RegExp(changed.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
@@ -2933,4 +2938,30 @@ test("Large directories, exports and monthly indicators include records beyond f
       await client.end();
     }
   }
+});
+
+test("Dashboard publishing shortcuts publish immediately within existing editorial roles", async () => {
+  const [editor, branch] = await Promise.all([login("president@example.test"), login("branch@example.test")]);
+  const token = randomUUID();
+  const post = (path, cookie, fields) => appRequest(path, {
+    method: "POST", headers: { origin: "http://localhost", cookie },
+    body: new URLSearchParams(fields),
+  });
+  const news = { title: "Редактор жаңалығы", slug: "news-" + token, summary: "Кіріспе", body: "Жаңалық мәтіні.", action: "publish" };
+  const event = { title: "Кездесу", slug: "meeting-" + token, summary: "Кездесу жайлы", description: "Бағдарлама",
+    startAt: "2027-01-15T10:00", endAt: "2027-01-15T11:00", eventScope: "BRANCH", branchId: "branch-almaty",
+    eventFormat: "OFFLINE", venue: "Зал", organizer: "Бірлестік", audience: "Мүшелер", action: "publish" };
+  const dashboard = visibleMarkup(await (await appRequest("/dashboard", { headers: authHeaders(editor) })).text());
+  assert.ok(dashboard.includes('href="/dashboard/content/news?create=1"'));
+  assert.ok(dashboard.includes('href="/dashboard/events?create=1"'));
+  assert.equal((await post("/api/content/news", branch, news)).status, 403);
+  assert.equal((await post("/api/events", branch, event)).status, 403);
+  for (const [path, fields, surface] of [["/api/content/news", news, "/news/"], ["/api/events", event, "/events/"]]) {
+    const created = await post(path, editor, fields);
+    assert.match(created.headers.get("location") ?? "", /success=published$/);
+    assert.equal((await appRequest(surface + fields.slug)).status, 200);
+  }
+  const review = { ...event, slug: "review-" + token, action: "submit" };
+  assert.match((await post("/api/events", branch, review)).headers.get("location") ?? "", /success=submitted$/);
+  assert.equal((await appRequest("/events/" + review.slug)).status, 404);
 });

@@ -1,3 +1,4 @@
+import { getCurrentUser } from "@/lib/auth";
 import { ArrowRight } from "lucide-react";
 import { PublicShell } from "./PublicShell";
 import { getPublicContentValues } from "@/db/queries";
@@ -22,7 +23,8 @@ export async function ContentPage({
   blocks: ContentBlock[];
   cta?: boolean;
 }) {
-  const content = await getPublicContentValues();
+  const [content, user] = await Promise.all([getPublicContentValues(), getCurrentUser()]);
+  const showCta = cta && (!user || user.membershipStatus === "registered_user" || content["common.cta.destination"] !== "/membership");
   return (
     <PublicShell content={content}>
       <main>
@@ -39,7 +41,7 @@ export async function ContentPage({
             ))}
           </div>
         </section>
-        {cta && <section className="container compact-cta"><div><span>{content["common.cta.eyebrow"]}</span><h2>{content["common.cta.heading"]}</h2></div><a className="button button-primary" href={content["common.cta.destination"]}>{content["common.cta.label"]} <ArrowRight size={18} /></a></section>}
+        {showCta && <section className="container compact-cta"><div><span>{content["common.cta.eyebrow"]}</span><h2>{content["common.cta.heading"]}</h2></div><a className="button button-primary" href={content["common.cta.destination"]}>{content["common.cta.label"]} <ArrowRight size={18} /></a></section>}
       </main>
     </PublicShell>
   );

@@ -7,6 +7,7 @@ import { formatDate } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
+const calendarDayLabel = new Intl.DateTimeFormat("kk-KZ", { timeZone: "Asia/Almaty", day: "numeric", month: "long", weekday: "long" });
 const calendarDate = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Almaty", year: "numeric", month: "2-digit", day: "2-digit" });
 
 function almatyDateKey(value: Date) {
@@ -54,7 +55,7 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
           const day = index + 1;
           const key = `${selectedMonth}-${String(day).padStart(2, "0")}`;
           const dayEvents = monthItems.filter(({ first, last }) => first <= key && key <= last);
-          return <span className={`calendar-day ${dayEvents.length ? "has-events" : ""}`} key={key}><b>{day}</b>{dayEvents.map(({ item }) => <a href={`/events/${item.slug}`} key={item.id}>{item.title}<small>{eventStatusLabel(item.status)}</small></a>)}</span>;
+          return <span className={`calendar-day ${dayEvents.length ? "has-events" : ""}`} key={key}><b><span className="calendar-date-number">{day}</span>{dayEvents.length > 0 && <span className="calendar-date-full">{calendarDayLabel.format(new Date(key + "T12:00:00+05:00"))}</span>}</b>{dayEvents.map(({ item }) => <a href={`/events/${item.slug}`} key={item.id}>{item.title}<small>{eventStatusLabel(item.status)}</small></a>)}</span>;
         })}</div>
       </div> : <div className="event-public-list">{filtered.map((item) => <article className="event-public-card" key={item.id}>
         {item.coverMediaId && <img src={`/api/public-media/${item.coverMediaId}`} alt="" />}

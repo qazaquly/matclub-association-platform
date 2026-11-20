@@ -63,7 +63,7 @@ export default async function AccessPage({ searchParams }: { searchParams: Promi
   ]);
 
   return <main className="dashboard-content">
-    <div className="dash-page-heading"><div><p>Серверлік авторизация</p><h1>Рөлдер мен құқықтар</h1></div><span className="immutable-pill"><ShieldCheck size={15} /> A деңгейі</span></div>
+    <div className="dash-page-heading"><div><h1>Рөлдер мен құқықтар</h1></div><span className="immutable-pill"><ShieldCheck size={15} /> A деңгейі</span></div>
     {message && <div className={`dash-alert ${message.kind}`}>{message.text}</div>}
     <nav className="task-links" aria-label="Құқықтарды басқару">
       <a href="/dashboard/access" aria-current={view === "roles" ? "page" : undefined}>Пайдаланушылар мен рөлдер</a>
@@ -72,7 +72,7 @@ export default async function AccessPage({ searchParams }: { searchParams: Promi
     </nav>
     {view === "structure" && <section className="panel structure-panel">
       <div className="panel-heading"><div><span>Басқарылатын иерархия</span><h2>Ұйымдық құрылым</h2></div><FolderTree size={21} /></div>
-      <p className="panel-intro">Президент пен II вице-президент бөлімдерді код өзгертпей жасайды, өңдейді және архивтейді. Архивтеу алдында белсенді мүшелер мен рөлдер басқа бөлімге ауыстырылуы тиіс.</p>
+      <p className="panel-intro">Президент пен II вице-президент бөлімдерді ашады, өңдейді және архивтейді. Архивтеу алдында белсенді мүшелер мен рөлдер басқа бөлімге ауыстырылуы тиіс.</p>
       <div className="structure-management-grid">
         <form className="role-form structure-create-form" action="/api/access/structure" method="post">
           <input type="hidden" name="action" value="create" />

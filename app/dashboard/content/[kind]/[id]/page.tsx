@@ -25,11 +25,11 @@ export default async function DynamicContentEditPage({ params, searchParams }: {
   return <main className="dashboard-content">
     <a className="back-link" href={`/dashboard/content/${rawKind}`}><ArrowLeft size={15} /> {meta.plural}</a>
     <div className="dash-page-heading"><div><p>{meta.singular}</p><h1>{title}</h1></div><span className={`content-status ${item.status.toLowerCase()}`}>{dynamicStatusLabel(item.status)}</span></div>
-    {state.success && <div className="dash-alert success">Өзгеріс сақталды және аудит журналына тіркелді.</div>}
+    {state.success && <div className="dash-alert success">{state.success === "published" ? "Сайтқа жарияланды." : "Сақталды."}</div>}
     {state.error && <div className="dash-alert error">Өзгеріс сақталмады. Өрістерді, сілтемені және суретті тексеріңіз.</div>}
     <div className="content-admin-note"><ShieldCheck size={22} /><p>Жарияланған материалды түзетуге болады: нұсқа ашық күйінде қалады, ал алдыңғы және жаңа мәндер аудитке жазылады.</p></div>
     {deletionDate && <div className="dash-alert error">Бұл материал архивте. Қайтарылмаса, {formatDate(deletionDate.toISOString())} күні автоматты түрде толық өшеді. Аудит жазбасы сақталады.</div>}
-    <section className="panel dynamic-edit-panel"><DynamicContentForm kind={rawKind} item={item} action={`/api/content/${rawKind}/${id}`} submitLabel="Өзгерісті сақтау" /></section>
+    <section className="panel dynamic-edit-panel"><DynamicContentForm kind={rawKind} item={item} action={`/api/content/${rawKind}/${id}`} submitLabel={isVisible ? "Сайттағы нұсқаны жаңарту" : "Өзгерісті сақтау"} /></section>
     <div className="dynamic-publish-bar">
       {isVisible && <a className="button" href={publicHref} target="_blank" rel="noreferrer"><ExternalLink size={15} /> Ашық бетті көру</a>}
       {canPublish && <div>

@@ -11,7 +11,7 @@ export default async function ProfessionalCategoriesPage({ searchParams }: { sea
   const [categories, state] = await Promise.all([getProfessionalCategoryAdminData(), searchParams]);
 
   return <main className="dashboard-content">
-    <div className="dash-page-heading"><div><p>Ресми кәсіби метадерек</p><h1>Кәсіби санаттар</h1></div><span className="immutable-pill"><ShieldCheck size={15} /> Арнайы құқық</span></div>
+    <div className="dash-page-heading"><div><h1>Кәсіби санаттар</h1></div><span className="immutable-pill"><ShieldCheck size={15} /> Арнайы құқық</span></div>
     {state.success && <div className="dash-alert success">Кәсіби санат өзгерісі сақталды және аудитке тіркелді.</div>}
     {state.error && <div className="dash-alert error">Кәсіби санатты сақтау мүмкін болмады. Атауы мен мәндерін тексеріңіз.</div>}
     <div className="content-admin-note"><Tags size={20} /><p>Кәсіби санат мүшелік мәртебесі, жүйелік рөл, департамент және филиалдан бөлек сақталады. Санатты белсенді емес ету бұрынғы тағайындауларды жоймайды.</p></div>

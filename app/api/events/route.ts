@@ -1,9 +1,9 @@
 import { getDb } from "@/db";
 import { authenticateRequest } from "@/lib/auth";
-import { canManageBranchEvents, canManageGlobalEvents, canManagePublicMedia, eventBranchScopeIds } from "@/lib/authorization";
+import { canManageBranchEvents, canManageGlobalEvents, canPublishEvents, canManagePublicMedia, eventBranchScopeIds } from "@/lib/authorization";
 import { serializeAuditValue } from "@/lib/dynamic-content";
 import { parseEventForm } from "@/lib/events";
-import { createPublicMedia, discardPublicMedia } from "@/lib/public-media";
+import { activatePublicMedia, createPublicMedia, discardPublicMedia } from "@/lib/public-media";
 import { assertSameOrigin, clientIp } from "@/lib/security";
 
 function uploadedFile(form: FormData) {
@@ -19,6 +19,9 @@ export async function POST(request: Request) {
     if (!actor) return new Response("Unauthorized", { status: 401 });
     if (!canManageGlobalEvents(actor) && !canManageBranchEvents(actor)) return new Response("Forbidden", { status: 403 });
     const form = await request.formData();
+    const publish = form.get("action") === "publish";
+    const submit = form.get("action") === "submit";
+    if (publish && (!canManageGlobalEvents(actor) || !canPublishEvents(actor))) return new Response("Forbidden", { status: 403 });
     const input = parseEventForm(form);
     if (input.eventScope === "NATIONAL" && !canManageGlobalEvents(actor)) return new Response("Forbidden", { status: 403 });
     if (input.eventScope === "BRANCH" && !canManageGlobalEvents(actor) && !eventBranchScopeIds(actor).includes(input.branchId!)) {
@@ -46,14 +49,16 @@ export async function POST(request: Request) {
         throw new Error("INVALID_EVENT:responsibleDepartmentId");
       }
       const created = await transaction.event.create({ data: {
-        id, ...input, coverMediaId: freshMediaId, status: "DRAFT", createdBy: actor.id, updatedBy: actor.id, createdAt: now, updatedAt: now,
+        id, ...input, coverMediaId: freshMediaId, status: publish ? "PUBLISHED" : submit ? "SUBMITTED" : "DRAFT",
+        publishedAt: publish ? now : null, submittedAt: submit ? now : null, createdBy: actor.id, updatedBy: actor.id, createdAt: now, updatedAt: now,
       } });
+      if (publish) await activatePublicMedia(transaction, freshMediaId);
       await transaction.auditLog.create({ data: {
-        id: crypto.randomUUID(), actorUserId: actor.id, actionType: "event.created", targetEntity: "event", targetEntityId: id,
-        newValue: serializeAuditValue(created), reason: "Іс-шара жобасы құрылды", ipAddress: clientIp(request), sessionId: actor.sessionId, createdAt: now,
+        id: crypto.randomUUID(), actorUserId: actor.id, actionType: publish ? "event.published" : submit ? "event.submitted" : "event.created", targetEntity: "event", targetEntityId: id,
+        newValue: serializeAuditValue(created), reason: publish ? "Іс-шара жарияланды" : submit ? "Іс-шара қарауға жіберілді" : "Нобай сақталды", ipAddress: clientIp(request), sessionId: actor.sessionId, createdAt: now,
       } });
     });
-    return Response.redirect(new URL(`/dashboard/events/${id}?success=created`, request.url), 303);
+    return Response.redirect(new URL(`/dashboard/events/${id}?success=${publish ? "published" : submit ? "submitted" : "created"}`, request.url), 303);
   } catch (error) {
     if (freshMediaId) await discardPublicMedia(freshMediaId).catch(() => undefined);
     const reason = error instanceof Error && (error.message.startsWith("INVALID_EVENT") || error.message.includes("Unique constraint")) ? "validation" : "unexpected";

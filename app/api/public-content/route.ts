@@ -2,7 +2,7 @@ import { ensureDatabase } from "@/db/bootstrap";
 import { getDb } from "@/db";
 import { authenticateRequest } from "@/lib/auth";
 import { canManagePublicContent } from "@/lib/authorization";
-import { publicContentDefinitions, validatePublicContentValue } from "@/lib/public-content";
+import { displayedContentValue, publicContentDefinitions, validatePublicContentValue } from "@/lib/public-content";
 import { assertSameOrigin, clientIp } from "@/lib/security";
 
 export async function POST(request: Request) {
@@ -13,15 +13,19 @@ export async function POST(request: Request) {
     if (!canManagePublicContent(actor)) return new Response("Forbidden", { status: 403 });
 
     const form = await request.formData();
-    const submitted = publicContentDefinitions.map((definition) => ({
+    const submitted = publicContentDefinitions.filter(definition => !definition.key.startsWith("contact.") || form.has(definition.key)).map((definition) => ({
       definition,
       value: validatePublicContentValue(definition.key, form.get(definition.key)),
     }));
     await ensureDatabase();
     const database = getDb();
-    const existingRows = await database.publicContent.findMany({ select: { key: true, value: true } });
-    const existing = new Map(existingRows.map((row) => [row.key, row.value]));
-    const changed = submitted.filter(({ definition, value }) => value !== (existing.get(definition.key) ?? definition.defaultValue));
+    const existingRows = await database.publicContent.findMany({ select: { key: true, value: true, updatedBy: true } });
+    const existing = new Map(existingRows.map((row) => [row.key, row]));
+    const original = (definition: typeof publicContentDefinitions[number]) => {
+      const row = existing.get(definition.key);
+      return row ? displayedContentValue(definition.key, row) : definition.defaultValue;
+    };
+    const changed = submitted.filter(({ definition, value }) => value !== original(definition));
     if (changed.length === 0) return Response.redirect(new URL("/dashboard/content?success=nochange", request.url), 303);
 
     const now = new Date();
@@ -31,7 +35,7 @@ export async function POST(request: Request) {
       section: definition.section,
       value,
       value_type: definition.kind,
-      previous_value: JSON.stringify({ value: existing.get(definition.key) ?? definition.defaultValue }),
+      previous_value: JSON.stringify({ value: existing.get(definition.key)?.value ?? definition.defaultValue }),
       new_value: JSON.stringify({ value }),
     })));
 
