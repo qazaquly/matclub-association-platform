@@ -21,7 +21,7 @@ export default async function DashboardPage() {
     getDashboardMetrics(user), listApplicationCandidates(user, 6), listBranches(user), isFullAccess(user) ? listAuditLogs(5) : Promise.resolve([]),
   ]);
   const values = [metrics.registeredUsers, metrics.applicants, metrics.awaitingReview, metrics.reserve, metrics.members, metrics.rejected];
-  const labels = ["Тіркелген профиль", "Үміткер", "Қаралуда", "Резерв", "Мүше", "Қабылданбаған өтініш"];
+  const labels = ["Өтініш бермегендер", "Үміткер", "Қаралуда", "Резерв", "Мүше", "Қабылданбаған өтініш"];
   const destinations = [
     "/dashboard/applications?status=registered_user",
     "/dashboard/applications?status=applicant",

@@ -1860,10 +1860,16 @@ test("authoritative VP mapping, branch scoping, private documents, audit access,
   assert.match(branchBranchesHtml, /Алматы қалалық филиалы/);
   assert.match(branchMembersHtml, /Алматы қалалық филиалы/);
   assert.match(branchApplicationsHtml, /Алматы қалалық филиалы/);
-  const profileCounts = await client.query("SELECT COUNT(*)::int AS organization_count, COUNT(*) FILTER (WHERE branch_id = 'branch-almaty')::int AS branch_count FROM person_profiles WHERE archived_at IS NULL");
-  assert.notEqual(profileCounts.rows[0].organization_count, profileCounts.rows[0].branch_count);
-  assert.match(branchDashboardHtml, new RegExp(`Тіркелген профиль</span><strong>${profileCounts.rows[0].branch_count}</strong>`));
-  assert.doesNotMatch(branchDashboardHtml, new RegExp(`Тіркелген профиль</span><strong>${profileCounts.rows[0].organization_count}</strong>`));
+  const counts = (await client.query(`
+    SELECT COUNT(*) FILTER (WHERE membership_status = 'registered_user' AND branch_id = 'branch-almaty')::int AS registered,
+           COUNT(*) FILTER (WHERE membership_status = 'applicant' AND branch_id = 'branch-almaty')::int AS applicants,
+           COUNT(*) FILTER (WHERE membership_status = 'applicant')::int AS national_applicants
+    FROM person_profiles WHERE archived_at IS NULL
+  `)).rows[0];
+  assert.notEqual(counts.applicants, counts.national_applicants);
+  assert.match(branchDashboardHtml, new RegExp(`Өтініш бермегендер</span><strong>${counts.registered}</strong>`));
+  assert.match(branchDashboardHtml, new RegExp(`Үміткер</span><strong>${counts.applicants}</strong>`));
+  assert.doesNotMatch(branchDashboardHtml, new RegExp(`Үміткер</span><strong>${counts.national_applicants}</strong>`));
 
   assert.equal((await appRequest(`/dashboard/applications/${almaty.id}`, { headers: authHeaders(branchCookie) })).status, 200);
   assert.equal((await appRequest(`/dashboard/applications/${east.id}`, { headers: authHeaders(branchCookie) })).status, 404);
