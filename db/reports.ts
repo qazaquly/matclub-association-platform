@@ -120,6 +120,7 @@ export async function buildReport(actor: AppUser, filters: ReportFilters): Promi
       take: 5000,
     });
     const mapped = rows.map((row) => ({
+      detailHref: "/dashboard/members/" + row.id,
       fullName: row.fullName, age: ageValue(row.birthDate, row.birthYear), email: row.email, phone: row.phone,
       branch: row.branch?.regionName ?? "", city: row.cityDistrict, workplace: row.workplace ?? "", position: row.position ?? "",
       categories: row.professionalCategories.map((item) => item.category.name).join(", "), status: statusLabel(row.membershipStatus), joinedAt: dateValue(row.membershipStartedAt),
@@ -146,6 +147,7 @@ export async function buildReport(actor: AppUser, filters: ReportFilters): Promi
       include: { branch: { select: { regionName: true } }, person: true }, orderBy: { submittedAt: "desc" }, take: 5000,
     });
     const mapped = rows.map((row) => ({
+      detailHref: "/dashboard/applications/" + row.id,
       submittedAt: dateValue(row.submittedAt), fullName: row.person.fullName, email: row.person.email, phone: row.person.phone,
       branch: row.branch.regionName, city: row.person.cityDistrict, workplace: row.person.workplace ?? "", position: row.person.position ?? "",
       status: statusLabel(row.status), reviewedAt: dateValue(row.reviewedAt), reason: row.decisionReason ?? "",

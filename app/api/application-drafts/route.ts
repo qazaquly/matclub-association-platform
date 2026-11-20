@@ -57,6 +57,6 @@ export async function POST(request: Request) {
     return Response.json({ saved: true, draft: saved });
   } catch (error) {
     logRuntimeError("application.draft_save.runtime_error", stage, error);
-    return Response.json({ error: "unexpected", message: "Draft-ты сақтау мүмкін болмады. Қайталап көріңіз." }, { status: 500 });
+    return Response.json({ error: "unexpected", message: "Өтінішті сақтау мүмкін болмады. Қайталап көріңіз." }, { status: 500 });
   }
 }

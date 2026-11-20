@@ -1,7 +1,7 @@
 /* eslint-disable @next/next/no-html-link-for-pages -- vinext dashboard transitions require native navigation. */
 import { ArrowRight, Building2, CircleUserRound, ClipboardCheck, Clock3, UserCheck, UserRoundX, UsersRound } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
-import { canReviewApplications, isDepartmentAccess, isFullAccess } from "@/lib/authorization";
+import { canReviewApplications, canViewReports, isDepartmentAccess, isFullAccess } from "@/lib/authorization";
 import { getDashboardMetrics, getOwnProfile, listApplicationCandidates, listAuditLogs, listBranches } from "@/db/queries";
 import { formatDate, statusLabel } from "@/lib/format";
 import { StatusBadge } from "@/app/components/StatusBadge";
@@ -25,12 +25,16 @@ export default async function DashboardPage() {
   const destinations = [
     "/dashboard/applications?status=registered_user",
     "/dashboard/applications?status=applicant",
-    "/dashboard/applications?status=applicant",
-    "/dashboard/reports",
+    "/dashboard/applications?status=awaiting_review",
+    canViewReports(user) ? "/dashboard/reports?kind=members&status=reserve" : undefined,
     "/dashboard/members",
-    "/dashboard/reports",
+    canViewReports(user) ? "/dashboard/reports?kind=applications&status=rejected" : undefined,
   ];
-  return <main className="dashboard-content"><div className="dash-page-heading"><div><p>Операциялық шолу</p><h1>Бірлестік панелі</h1></div><span className="updated-at">Жаңартылды · {formatDate(new Date().toISOString(), true)}</span></div><section className="metrics-grid">{values.map((value, index) => { const Icon = metricIcons[index]; return <a className="metric-card" href={destinations[index]} key={labels[index]} aria-label={`${labels[index]} тізімін ашу`}><div><span>{labels[index]}</span><strong>{value}</strong></div><Icon size={22} /></a>; })}</section><div className="dashboard-grid"><section className="panel wide"><div className="panel-heading"><div><span>Мүшелік</span><h2>Соңғы тіркелгілер мен үміткерлер</h2></div><a href="/dashboard/applications">Барлығын көру <ArrowRight size={16} /></a></div><div className="table-wrap"><table><thead><tr><th>Адам</th><th>Филиал</th><th>Күні</th><th>Мәртебе</th></tr></thead><tbody>{applications.map((application) => {
+  return <main className="dashboard-content"><div className="dash-page-heading"><div><p>Операциялық шолу</p><h1>Бірлестік панелі</h1></div><span className="updated-at">Жаңартылды · {formatDate(new Date().toISOString(), true)}</span></div><section className="metrics-grid">{values.map((value, index) => { const Icon = metricIcons[index];
+    const href = destinations[index];
+    const content = <><div><span>{labels[index]}</span><strong>{value}</strong></div><Icon size={22} /></>;
+    return href ? <a className="metric-card" href={href} key={labels[index]} aria-label={labels[index] + " тізімін ашу"}>{content}</a>
+      : <div className="metric-card" key={labels[index]}>{content}</div>; })}</section><div className="dashboard-grid"><section className="panel wide"><div className="panel-heading"><div><span>Мүшелік</span><h2>Соңғы тіркелгілер мен үміткерлер</h2></div><a href="/dashboard/applications">Барлығын көру <ArrowRight size={16} /></a></div><div className="table-wrap"><table><thead><tr><th>Адам</th><th>Филиал</th><th>Күні</th><th>Мәртебе</th></tr></thead><tbody>{applications.map((application) => {
     const href = application.applicationId ? `/dashboard/applications/${application.applicationId}` : `/dashboard/members/${application.personId}`;
     return <tr key={application.personId}><td><a href={href}><strong>{application.fullName}</strong><small>{application.position ?? application.email}</small></a></td><td>{application.branchId ? <a href={`/dashboard/applications?branchId=${encodeURIComponent(application.branchId)}`}>{application.branchName}</a> : "—"}</td><td>{formatDate(application.activityAt)}</td><td><StatusBadge status={application.membershipStatus} /></td></tr>;
   })}</tbody></table></div></section><section className="panel"><div className="panel-heading"><div><span>Өңірлер</span><h2>Филиалдар</h2></div><a href="/dashboard/branches">Ашу</a></div><div className="branch-mini-list">{branches.slice(0, 5).map((branch) => <a href={`/dashboard/branches/${encodeURIComponent(branch.id)}`} key={branch.id}><span><Building2 size={16} /></span><div><strong>{branch.regionName}</strong><small>{branch.memberCount} мүше · {branch.applicantCount} үміткер</small></div></a>)}</div></section>{isFullAccess(user) && <section className="panel audit-panel"><div className="panel-heading"><div><span>Бақылау</span><h2>Соңғы аудит әрекеттері</h2></div><a href="/dashboard/audit">Журнал</a></div><div className="audit-mini-list">{audit.map((event) => <div key={event.id}><i /><div><strong>{event.actionType}</strong><small>{event.actorName ?? "Жүйе"} · {formatDate(event.createdAt, true)}</small></div></div>)}</div></section>}</div></main>;

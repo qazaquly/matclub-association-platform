@@ -1,5 +1,6 @@
 /* eslint-disable @next/next/no-html-link-for-pages -- Vinext beta client routing breaks normal public left-click navigation. */
 import { ArrowRight, BookOpen, Building2, CalendarDays, Network, ShieldCheck, Sparkles, Users } from "lucide-react";
+import { getCurrentUser } from "@/lib/auth";
 import { PublicShell } from "./components/PublicShell";
 import { getPublicContentValues } from "@/db/queries";
 import { getNearestUpcomingEvent } from "@/db/events";
@@ -30,7 +31,8 @@ const priorities = [
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  const [content, nearestEvent] = await Promise.all([getPublicContentValues(), getNearestUpcomingEvent()]);
+  const [content, nearestEvent, user] = await Promise.all([getPublicContentValues(), getNearestUpcomingEvent(), getCurrentUser()]);
+  const cabinet = Boolean(user && user.membershipStatus !== "registered_user");
   const [sloganLead, ...sloganRest] = content["home.hero.slogan"].split(". ");
   return (
     <PublicShell content={content}>
@@ -43,8 +45,8 @@ export default async function Home() {
               <h1>{sloganLead}{sloganRest.length > 0 ? "." : ""}{sloganRest.length > 0 && <><br /><em>{sloganRest.join(". ")}</em></>}</h1>
               <p className="hero-lead">{content["home.hero.intro"]}</p>
               <div className="hero-actions">
-                <a className="button button-primary" href={content["home.hero.primaryDestination"]}>
-                  {content["home.hero.primaryLabel"]} <ArrowRight size={18} />
+                <a className="button button-primary" href={cabinet ? "/dashboard" : content["home.hero.primaryDestination"]}>
+                  {cabinet ? "Жеке кабинетке өту" : content["home.hero.primaryLabel"]} <ArrowRight size={18} />
                 </a>
                 <a className="button button-ghost" href={content["home.hero.secondaryDestination"]}>{content["home.hero.secondaryLabel"]}</a>
               </div>
@@ -124,7 +126,7 @@ export default async function Home() {
 
         {nearestEvent && <section className="container nearest-event"><div><p className="eyebrow">Жақын іс-шара</p><h2>{nearestEvent.title}</h2><p>{nearestEvent.summary}</p></div><div className="nearest-event-meta"><span><CalendarDays size={17} /> {formatDate(nearestEvent.startAt.toISOString(), true)}</span><span>{eventLocation(nearestEvent)}</span><span>{eventStatusLabel(nearestEvent.status)}</span><a className="button button-white" href={`/events/${nearestEvent.slug}`}>Толық ақпарат <ArrowRight size={17} /></a></div></section>}
 
-        <section className="container membership-callout">
+        {!cabinet && <section className="container membership-callout">
           <div>
             <p className="eyebrow">Бірлестікке қосылыңыз</p>
             <h2>{content["home.membership.heading"]}</h2>
@@ -133,7 +135,7 @@ export default async function Home() {
             <p>{content["home.membership.intro"]}</p>
             <a className="button button-white" href={content["home.membership.ctaDestination"]}>{content["home.membership.ctaLabel"]} <ArrowRight size={18} /></a>
           </div>
-        </section>
+        </section>}
       </main>
     </PublicShell>
   );

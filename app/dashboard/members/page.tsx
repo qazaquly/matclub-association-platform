@@ -47,20 +47,21 @@ export default async function MembersPage({ searchParams }: { searchParams: Prom
   const canAssignCategories = canAssignProfessionalCategories(user);
 
   return <main className="dashboard-content">
-    <div className="dash-page-heading"><div><p>Жалпы фильтрлі іздеу</p><h1>Адамдар мен кәсіби профильдер</h1></div><span className="record-count">{members.length} профиль</span></div>
+    <div className="dash-page-heading"><div><h1>Мүшелер</h1></div><span className="record-count">{members.length} профиль</span></div>
     {state.success && <div className="dash-alert success">{state.success === "erased" ? "Аккаунт, жеке деректер және файлдар біржола өшірілді." : "Өзгеріс сақталды. Бұрынғы мәндер аудит тарихында сақталды."}</div>}
     {state.error && <div className="dash-alert error">{state.error === "confirmation" ? "Өшіруді растау үшін ӨШІРУ сөзін дәл жазыңыз." : state.error === "self" ? "Өз аккаунтыңызды осы жерден өшіруге болмайды." : "Өзгерісті сақтау мүмкін болмады. Қате сервер журналында тіркелді."}</div>}
     <form className="member-search" method="get">
-      <div className="member-search-intro"><span><Search size={18} /></span><div><strong>Қажетті адамды бірнеше белгімен табыңыз</strong><small>Мысалы: жасы 35-ке толмаған, мектепте істейтін математика мұғалімі.</small></div></div>
-      <label className="member-search-wide">Жалпы сөз<input name="q" defaultValue={filters.query ?? ""} maxLength={120} placeholder="Аты-жөні, мамандануы немесе оқу орны" /></label>
-      <label>Мәртебе<select disabled defaultValue="member"><option value="member">Мақұлданған мүше</option></select></label>
+      <label className="member-search-wide">Мүшені іздеу<input type="search" name="q" defaultValue={filters.query ?? ""} maxLength={120} placeholder="Аты-жөні, жұмыс орны немесе мамандануы" /></label>
       <label>Өңір<select name="branchId" defaultValue={filters.branchId ?? ""}><option value="">Барлық рұқсат етілген өңір</option>{branches.map((branch) => <option value={branch.id} key={branch.id}>{branch.regionName}</option>)}</select></label>
+      <details className="advanced-filters" open={Boolean(filters.categoryId || filters.minimumAge || filters.ageUnder || filters.workplace || filters.position || filters.cityDistrict)}>
+        <summary>Қосымша сүзгілер</summary><div>
       <label>Кәсіби санат<select name="categoryId" defaultValue={filters.categoryId ?? ""}><option value="">Барлық санат</option>{categories.map((category) => <option value={category.id} key={category.id}>{category.name}{category.status === "inactive" ? " · белсенді емес" : ""}</option>)}</select></label>
       <label>Жасы кемінде<input type="number" name="minimumAge" min={18} max={100} defaultValue={filters.minimumAge ?? ""} placeholder="мысалы, 25" /></label>
       <label>Жасы толмаған<input type="number" name="ageUnder" min={19} max={101} defaultValue={filters.ageUnder ?? ""} placeholder="мысалы, 35" /></label>
       <label>Жұмыс орны<input name="workplace" defaultValue={filters.workplace ?? ""} maxLength={120} placeholder="мысалы, мектеп" /></label>
       <label>Лауазымы<input name="position" defaultValue={filters.position ?? ""} maxLength={120} placeholder="математика мұғалімі" /></label>
       <label>Қала / аудан<input name="cityDistrict" defaultValue={filters.cityDistrict ?? ""} maxLength={120} placeholder="Алматы" /></label>
+      </div></details>
       <div className="member-search-actions"><button type="submit"><Search size={15} /> Іздеу</button><a href="/dashboard/members"><RotateCcw size={14} /> Тазарту</a></div>
     </form>
     <section className="panel"><div className="table-wrap"><table className="data-table member-table"><thead><tr><th>Аты-жөні</th><th>Жасы / елді мекені</th><th>Жұмыс орны / қызметі</th><th>Филиал</th><th>Мүшелік</th><th>Кәсіби санаттар</th>{(full || canAssignCategories) && <th>Әкімшілік өзгеріс</th>}</tr></thead><tbody>{members.map((member) => {

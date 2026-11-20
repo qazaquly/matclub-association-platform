@@ -1,5 +1,6 @@
 /* eslint-disable @next/next/no-html-link-for-pages -- Vinext beta client routing breaks normal public left-click navigation. */
 import { ArrowUpRight, ChevronDown, Menu } from "lucide-react";
+import { getCurrentUser } from "@/lib/auth";
 import { defaultLocale, translate } from "@/lib/i18n";
 import type { PublicContentValues } from "@/lib/public-content";
 import { getPublicContentValues } from "@/db/queries";
@@ -14,6 +15,12 @@ const primaryLinks = [
 
 export async function PublicShell({ children, content: suppliedContent }: { children: React.ReactNode; content?: PublicContentValues }) {
   const content = suppliedContent ?? await getPublicContentValues();
+  const user = await getCurrentUser();
+  const cabinet = Boolean(user && user.membershipStatus !== "registered_user");
+  const primaryHref = cabinet ? "/dashboard" : content["home.hero.primaryDestination"];
+  const primaryLabel = cabinet ? "Жеке кабинетке өту" : content["home.hero.primaryLabel"];
+  const accountHref = user ? "/dashboard" : "/login";
+  const accountLabel = user ? "Жеке кабинет" : "Жүйеге кіру";
   return (
     <div className="public-shell">
       <header className="public-header">
@@ -26,11 +33,11 @@ export async function PublicShell({ children, content: suppliedContent }: { chil
             {primaryLinks.map(([label, href]) => <a href={href} key={href}>{label}</a>)}
           </nav>
           <div className="header-actions">
-            <a className="login-link" href="/login">{translate(defaultLocale, "signIn")} <ArrowUpRight size={15} /></a>
-            <a className="header-cta" href={content["home.hero.primaryDestination"]}>{content["home.hero.primaryLabel"]}</a>
+            {!cabinet && <a className="login-link" href={accountHref}>{user ? accountLabel : translate(defaultLocale, "signIn")} <ArrowUpRight size={15} /></a>}
+            <a className="header-cta" href={primaryHref}>{primaryLabel}</a>
             <details className="mobile-menu">
               <summary aria-label="Мәзірді ашу"><Menu size={22} /><ChevronDown size={14} /></summary>
-              <nav>{primaryLinks.map(([label, href]) => <a href={href} key={href}>{label}</a>)}<a href="/login">Жүйеге кіру</a></nav>
+              <nav>{primaryLinks.map(([label, href]) => <a href={href} key={href}>{label}</a>)}<a href={accountHref}>{accountLabel}</a></nav>
             </details>
           </div>
         </div>
@@ -44,9 +51,9 @@ export async function PublicShell({ children, content: suppliedContent }: { chil
           </div>
           <div><strong>Қауымдастық</strong><a href="/about">Біз туралы</a><a href="/mission">Миссия</a><a href="/structure">Құрылым</a><a href="/partners">Серіктестер</a></div>
           <div><strong>Қызмет</strong><a href="/projects">Жобалар</a><a href="/events">Іс-шаралар</a><a href="/publications">Материалдар</a><a href="/news">Жаңалықтар</a></div>
-          <div><strong>Байланыс</strong><a href={content["footer.contactDestination"]}>{content["footer.contactLabel"]}</a><a href={content["home.hero.primaryDestination"]}>Мүше болу</a><a href="/login">Ішкі жүйе</a></div>
+          <div><strong>Байланыс</strong><a href={content["footer.contactDestination"]}>{content["footer.contactLabel"]}</a>{!cabinet && <a href={primaryHref}>Мүше болу</a>}<a href={accountHref}>{accountLabel}</a></div>
         </div>
-        <div className="container footer-bottom"><span>© 2026 Республикалық математиктер бірлестігі.</span><span>Қазақша · RU · EN</span></div>
+        <div className="container footer-bottom"><span>© 2026 Республикалық математиктер бірлестігі.</span></div>
       </footer>
     </div>
   );

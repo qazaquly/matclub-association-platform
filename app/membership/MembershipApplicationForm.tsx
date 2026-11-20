@@ -96,7 +96,7 @@ export function MembershipApplicationForm({
       setSaveState("saved");
       return true;
     } catch {
-      if (showErrors) setErrors({ form: "Draft-ты сақтау мүмкін болмады. Интернет байланысын тексеріңіз." });
+      if (showErrors) setErrors({ form: "Өтінішті сақтау мүмкін болмады. Интернет байланысын тексеріңіз." });
       setSaveState("error");
       return false;
     }
@@ -153,7 +153,7 @@ export function MembershipApplicationForm({
       const first = Object.keys(nextErrors).find((name) => name !== "form");
       if (first) formRef.current?.querySelector<HTMLElement>(`[name="${first}"]`)?.focus();
     } catch {
-      setErrors({ form: "Өтініш жіберілмеді. Енгізілген деректер draft-та сақталды." });
+      setErrors({ form: "Өтініш жіберілмеді. Енгізілген деректер аяқталмаған өтініште сақталды." });
     } finally {
       setSubmitting(false);
     }
@@ -162,7 +162,7 @@ export function MembershipApplicationForm({
   return <form ref={formRef} className="application-form" onSubmit={submit} onInput={scheduleSave} noValidate>
     <input type="hidden" name="source" value={source} />
     <div className="application-steps" aria-label="Өтініш кезеңдері"><span><b>1</b> Жеке деректер</span><span><b>2</b> Кәсіби мәліметтер</span><span><b>3</b> Құжаттар және келісімдер</span></div>
-    <div className={`draft-status ${saveState}`} aria-live="polite">{saveState === "saving" ? "Draft сақталуда…" : saveState === "saved" ? "Draft серверде сақталды" : saveState === "error" ? "Draft-ты сақтау қажет" : "Деректер автоматты түрде сақталады"}</div>
+    <div className={`draft-status ${saveState}`} aria-live="polite">{saveState === "saving" ? "Өзгерістер сақталуда…" : saveState === "saved" ? "Өзгерістер сақталды" : saveState === "error" ? "Соңғы өзгеріс сақталмады" : "Деректер автоматты түрде сақталады"}</div>
     {errors.form && <div className="form-alert" role="alert">{errors.form}</div>}
 
     <fieldset><legend><b>1</b> Жеке деректер</legend><div className="form-grid">
@@ -189,7 +189,7 @@ export function MembershipApplicationForm({
     <fieldset><legend><b>3</b> Құжаттар және келісімдер</legend>
       <label className={`file-drop ${invalid("documents") ?? ""}`}><FileLock2 size={26} /><strong>Қосымша құжаттарды тіркеу</strong><span>Міндетті емес · PDF, JPG немесе PNG · 3 файлға дейін, әрқайсысы 5 МБ-қа дейін</span><input name="documents" type="file" multiple accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" onChange={(event) => void uploadDocuments(event.currentTarget.files)} aria-invalid={Boolean(errors.documents)} /></label>
       <FieldError name="documents" errors={errors} />
-      {documents.length > 0 && <div className="draft-document-list">{documents.map((document) => <div key={document.id}><span><strong>{document.originalName}</strong><small>{Math.ceil(document.sizeBytes / 1024)} КБ · draft-та сақталған</small></span><button type="button" onClick={() => void removeDocument(document.id)} aria-label={`${document.originalName} құжатын алып тастау`}><Trash2 size={16} /></button></div>)}</div>}
+      {documents.length > 0 && <div className="draft-document-list">{documents.map((document) => <div key={document.id}><span><strong>{document.originalName}</strong><small>{Math.ceil(document.sizeBytes / 1024)} КБ · өтінішке тіркелген</small></span><button type="button" onClick={() => void removeDocument(document.id)} aria-label={`${document.originalName} құжатын алып тастау`}><Trash2 size={16} /></button></div>)}</div>}
       <label className={`terms-check ${invalid("termsAccepted") ?? ""}`}><input name="termsAccepted" type="checkbox" defaultChecked={defaults.termsAccepted} aria-invalid={Boolean(errors.termsAccepted)} /><span><a href="/membership/terms" target="_blank" rel="noreferrer">Мүшелік шарттарымен</a> таныстым және қабылдаймын.<FieldError name="termsAccepted" errors={errors} /></span></label>
       <label className={`terms-check ${invalid("privacyAccepted") ?? ""}`}><input name="privacyAccepted" type="checkbox" defaultChecked={defaults.privacyAccepted} aria-invalid={Boolean(errors.privacyAccepted)} /><span><a href="/privacy" target="_blank" rel="noreferrer">Дербес деректерді өңдеу тәртібімен</a> таныстым және дербес деректерімді өңдеуге келісемін.<FieldError name="privacyAccepted" errors={errors} /></span></label>
     </fieldset>

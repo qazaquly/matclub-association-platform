@@ -548,3 +548,30 @@ textarea { resize: vertical; }
 }
 
 @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; transition: none !important; } }
+
+.dashboard-sidebar nav { min-height: 0; overflow-y: auto; padding-bottom: 12px; }
+.dash-nav-group { display: grid; gap: 2px; }
+.dash-nav-group > strong { padding: 8px 12px 2px; font-size: 11px; font-weight: 600; }
+.dashboard-sidebar .dash-nav-group > strong { color: #b2c5be; }
+.dashboard-sidebar a[aria-current] { background: #d9f071; color: #102e29; font-weight: 700; }
+.dashboard-sidebar .sidebar-user { flex-shrink: 0; }
+.dashboard-topbar > details nav { max-height: calc(100dvh - 75px); overflow-y: auto; }
+.dashboard-topbar nav a[aria-current] { background: var(--mint-soft); color: var(--forest); font-weight: 700; border-radius: 6px; }
+.mobile-logout { display: flex; align-items: center; gap: 8px; width: 100%; padding: 12px 8px; background: white; border: 0; border-top: 1px solid var(--line); color: var(--forest); cursor: pointer; }
+.mobile-menu summary, .dashboard-topbar > details summary { min-height: 44px; min-width: 44px; justify-content: center; }
+.advanced-filters { grid-column: 1 / -1; }
+.advanced-filters summary { cursor: pointer; color: var(--forest); font-weight: 600; }
+.advanced-filters > div { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,170px),1fr)); gap: 12px; margin-top: 12px; }
+.list-pages { display: flex; justify-content: center; align-items: center; gap: 18px; margin: 16px 0; }
+.list-pages a { padding: 9px; color: var(--forest); text-decoration: underline; }
+@media (max-width: 700px) {
+  .application-table { display: block; min-width: 0; width: 100%; }
+  .application-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .application-table tbody { display: block; width: 100%; }
+  .application-table tr { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center; gap: 10px; padding: 6px 14px; border-bottom: 1px solid var(--line); }
+  .application-table td { border: 0; padding: 0; }
+  .application-table td:not(:first-child):not(:nth-child(5)), .application-table .table-person-link small { display: none; }
+  .application-table .table-person-link { padding: 12px 0; overflow-wrap: anywhere; }
+}
+
+.report-person-link { text-decoration: underline; text-underline-offset: 3px; }
