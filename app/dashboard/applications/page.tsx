@@ -1,4 +1,5 @@
 /* eslint-disable @next/next/no-html-link-for-pages -- dashboard filters use native navigation. */
+import { withListOrigin } from "@/lib/list-navigation";
 import { ArrowRight, ClipboardList } from "lucide-react";
 import { notFound } from "next/navigation";
 import { StatusBadge } from "@/app/components/StatusBadge";
@@ -54,10 +55,10 @@ export default async function ApplicationsPage({ searchParams }: { searchParams:
     <section className="panel"><div className="table-wrap"><table className="data-table application-table">
       <thead><tr><th>Адам</th><th>Қала / аудан</th><th>Филиал</th><th>Тіркелген / жіберілген</th><th>Мәртебе</th><th aria-label="Әрекет" /></tr></thead>
       <tbody>{shown.map(row => <tr key={row.href}>
-        <td><a className="table-person-link" href={row.href}><strong>{row.fullName}</strong><small>{row.workplace ? row.workplace + " · " : ""}{row.email}</small></a></td>
+        <td><a className="table-person-link" href={withListOrigin(row.href, listUrl(page))}><strong>{row.fullName}</strong><small>{row.workplace ? row.workplace + " · " : ""}{row.email}</small></a></td>
         <td>{row.cityDistrict || "—"}</td><td>{row.branchId ? <a href={listUrl(1, row.branchId)}>{row.branchName}</a> : "—"}</td>
         <td>{formatDate(row.activityAt)}</td><td><StatusBadge status={row.status} /></td>
-        <td><a className="row-action" href={row.href}>Ашу <ArrowRight size={15} /></a></td>
+        <td><a className="row-action" href={withListOrigin(row.href, listUrl(page))}>Ашу <ArrowRight size={15} /></a></td>
       </tr>)}</tbody>
     </table></div>
     {!shown.length && <div className="empty-state"><ClipboardList size={28} /><h2>Жазба табылмады</h2>

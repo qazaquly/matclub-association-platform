@@ -1,3 +1,4 @@
+import { withListOrigin } from "@/lib/list-navigation";
 import { z } from "zod";
 import { ensureDatabase } from "@/db/bootstrap";
 import { getDb } from "@/db";
@@ -18,7 +19,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     const { id } = await context.params;
     const parsed = reopenSchema.safeParse(Object.fromEntries((await request.formData()).entries()));
     if (!parsed.success) {
-      return Response.redirect(new URL(`/dashboard/applications/${id}?error=validation`, request.url), 303);
+      return Response.redirect(new URL(withListOrigin(`/dashboard/applications/${id}?error=validation`, new URL(request.url).searchParams.get("fromList")), request.url), 303);
     }
 
     await ensureDatabase();
@@ -32,7 +33,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     });
     if (!application) return new Response("Not found", { status: 404 });
     if (application.status !== "rejected") {
-      return Response.redirect(new URL(`/dashboard/applications/${id}?error=not_rejected`, request.url), 303);
+      return Response.redirect(new URL(withListOrigin(`/dashboard/applications/${id}?error=not_rejected`, new URL(request.url).searchParams.get("fromList")), request.url), 303);
     }
 
     const now = new Date();
@@ -87,7 +88,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       });
     });
 
-    return Response.redirect(new URL(`/dashboard/applications/${id}?success=reopened`, request.url), 303);
+    return Response.redirect(new URL(withListOrigin(`/dashboard/applications/${id}?success=reopened`, new URL(request.url).searchParams.get("fromList")), request.url), 303);
   } catch {
     return new Response("Unable to reopen the application", { status: 400 });
   }

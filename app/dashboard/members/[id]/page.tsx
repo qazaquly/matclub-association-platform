@@ -1,4 +1,4 @@
-/* eslint-disable @next/next/no-html-link-for-pages -- vinext dashboard transitions require native navigation. */
+import { listBackLabel, listOrigin, withListOrigin } from "@/lib/list-navigation";
 import { Archive, ArrowLeft, CalendarCheck, Download, FileText, History, Trash2, UserRound } from "lucide-react";
 import { notFound } from "next/navigation";
 import { StatusBadge } from "@/app/components/StatusBadge";
@@ -8,10 +8,12 @@ import { canReviewApplications, isFullAccess } from "@/lib/authorization";
 import { formatDate, statusLabel } from "@/lib/format";
 import { educationLevels } from "@/lib/membership-application";
 
-export default async function MemberDetailPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ error?: string }> }) {
+export default async function MemberDetailPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ error?: string; fromList?: string }> }) {
   const user = (await getCurrentUser())!;
   if (!canReviewApplications(user)) notFound();
   const [{ id }, state] = await Promise.all([params, searchParams]);
+  const origin = listOrigin(state.fromList);
+  const back = origin ?? "/dashboard/members";
   const member = await getMemberDetail(user, id);
   if (!member) notFound();
   const educationLevel = educationLevels.find(([code]) => code === member.educationLevelCode)?.[1] ?? null;
@@ -24,12 +26,12 @@ export default async function MemberDetailPage({ params, searchParams }: { param
     ["Кәсіби тәжірибесі", member.professionalExperience], ["Өмірбаян", member.biography],
   ];
   return <main className="dashboard-content">
-    <a className="back-link dark-link" href="/dashboard/members"><ArrowLeft size={16} /> Мүшелерге оралу</a>
+    <a className="back-link dark-link" href={back}><ArrowLeft size={16} /> {listBackLabel(back)}</a>
     <div className="detail-heading"><div><p>{member.branchName ?? "Филиал тағайындалмаған"}</p><h1>{member.fullName}</h1><span>Профиль № {member.id.slice(0, 8).toUpperCase()} · тіркелген: {formatDate(member.account?.createdAt ?? "")}</span></div><StatusBadge status={member.membershipStatus} /></div>
     {state.error && <div className="dash-alert error">Әрекетті орындау мүмкін болмады: {state.error === "protected" ? "басшылықтың қорғалған аккаунтын архивтеуге болмайды" : state.error === "self" ? "өзіңіздің аккаунтыңызды архивтеуге болмайды" : "деректерді тексеріңіз"}.</div>}
     <div className="detail-grid"><div className="detail-main">
       <section className="panel"><div className="panel-heading"><div><span>Профиль</span><h2>Адам туралы толық мәлімет</h2></div><UserRound size={19} /></div><dl className="profile-fields">{fields.map(([label, value]) => <div className={String(value ?? "").length > 80 ? "wide-field" : ""} key={String(label)}><dt>{label}</dt><dd>{value || "—"}</dd></div>)}</dl></section>
-      <section className="panel"><div className="panel-heading"><div><span>Өтініштер</span><h2>Мүшелік өтініштері</h2></div></div><div className="linked-record-list">{member.applications.map((application) => <a href={`/dashboard/applications/${application.id}`} key={application.id}><span>№ {application.id.slice(0, 8).toUpperCase()}</span><strong>{statusLabel(application.status)}</strong><small>{formatDate(application.submittedAt)}</small></a>)}{member.applications.length === 0 && <p className="muted">Өтініш жоқ.</p>}</div></section>
+      <section className="panel"><div className="panel-heading"><div><span>Өтініштер</span><h2>Мүшелік өтініштері</h2></div></div><div className="linked-record-list">{member.applications.map((application) => <a href={withListOrigin(`/dashboard/applications/${application.id}`, origin)} key={application.id}><span>№ {application.id.slice(0, 8).toUpperCase()}</span><strong>{statusLabel(application.status)}</strong><small>{formatDate(application.submittedAt)}</small></a>)}{member.applications.length === 0 && <p className="muted">Өтініш жоқ.</p>}</div></section>
       <section className="panel"><div className="panel-heading"><div><span>Құжаттар</span><h2>Профильге тиесілі файлдар</h2></div><FileText size={19} /></div><div className="document-list">{member.documents.map((document) => <div key={document.id}><span><FileText size={18} /></span><div><strong>{document.originalName}</strong><small>{Math.ceil(document.sizeBytes / 1024)} КБ{document.status === "removal_requested" ? " · жою сұралды" : ""}</small></div><a href={`/api/documents/${document.id}`}><Download size={16} /> Ашу</a></div>)}{member.documents.length === 0 && <p className="muted">Құжат жоқ.</p>}</div></section>
       <section className="panel"><div className="panel-heading"><div><span>Расталған тарих</span><h2>Бірлестіктегі қызметі</h2></div><CalendarCheck size={19} /></div><div className="profile-event-list">{member.activities.map((activity) => {
         const href = activity.eventId ? `/dashboard/events/${activity.eventId}` : activity.projectId ? `/dashboard/projects/${activity.projectId}` : null;

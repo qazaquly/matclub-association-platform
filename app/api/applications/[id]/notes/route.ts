@@ -1,3 +1,4 @@
+import { withListOrigin } from "@/lib/list-navigation";
 import { z } from "zod";
 import { ensureDatabase } from "@/db/bootstrap";
 import { getDb } from "@/db";
@@ -17,7 +18,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   const { id } = await context.params;
   const parsed = noteSchema.safeParse(Object.fromEntries((await request.formData()).entries()));
   if (!parsed.success || (parsed.data.visibility === "central" && !isFullAccess(user))) {
-    return Response.redirect(new URL(`/dashboard/applications/${id}?error=note`, request.url), 303);
+    return Response.redirect(new URL(withListOrigin(`/dashboard/applications/${id}?error=note`, new URL(request.url).searchParams.get("fromList")), request.url), 303);
   }
   await ensureDatabase();
   const database = getDb();
@@ -37,5 +38,5 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       sessionId: user.sessionId, createdAt: now,
     } }),
   ]);
-  return Response.redirect(new URL(`/dashboard/applications/${id}?success=note`, request.url), 303);
+  return Response.redirect(new URL(withListOrigin(`/dashboard/applications/${id}?success=note`, new URL(request.url).searchParams.get("fromList")), request.url), 303);
 }

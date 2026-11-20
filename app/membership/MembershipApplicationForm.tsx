@@ -118,21 +118,32 @@ export function MembershipApplicationForm({
     setSaveState("saving");
     const body = new FormData();
     for (const file of Array.from(fileList)) body.append("documents", file);
-    const response = await fetch("/api/application-drafts/documents", { method: "POST", body, credentials: "same-origin", headers: { accept: "application/json" } });
-    const result = await response.json() as { documents?: DraftDocument[]; errors?: FieldErrors; message?: string };
-    if (!response.ok) {
-      setErrors((current) => ({ ...current, ...(result.errors ?? {}), ...(result.message ? { documents: result.message } : {}) }));
+    try {
+      const response = await fetch("/api/application-drafts/documents", { method: "POST", body, credentials: "same-origin", headers: { accept: "application/json" } });
+      const result = await response.json() as { documents?: DraftDocument[]; errors?: FieldErrors; message?: string };
+      if (!response.ok) {
+        setErrors((current) => ({ ...current, ...(result.errors ?? {}), ...(result.message ? { documents: result.message } : {}) }));
+        setSaveState("error");
+        return;
+      }
+      setDocuments(result.documents ?? []);
+      setErrors((current) => { const next = { ...current }; delete next.documents; return next; });
+      setSaveState("saved");
+    } catch {
       setSaveState("error");
-      return;
+      setErrors((current) => ({ ...current, documents: "Құжат жүктелмеді. Байланысты тексеріп, файлды қайта таңдаңыз." }));
     }
-    setDocuments(result.documents ?? []);
-    setErrors((current) => { const next = { ...current }; delete next.documents; return next; });
-    setSaveState("saved");
   }
 
   async function removeDocument(id: string) {
-    const response = await fetch(`/api/application-drafts/documents/${encodeURIComponent(id)}`, { method: "DELETE", credentials: "same-origin", headers: { accept: "application/json" } });
-    if (response.ok) setDocuments((current) => current.filter((document) => document.id !== id));
+    try {
+      const response = await fetch(`/api/application-drafts/documents/${encodeURIComponent(id)}`, { method: "DELETE", credentials: "same-origin", headers: { accept: "application/json" } });
+      if (!response.ok) throw new Error("Document removal failed");
+      setDocuments((current) => current.filter((document) => document.id !== id));
+      setErrors((current) => { const next = { ...current }; delete next.documents; return next; });
+    } catch {
+      setErrors((current) => ({ ...current, documents: "Құжатты алып тастау мүмкін болмады. Қайталап көріңіз." }));
+    }
   }
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
@@ -161,37 +172,37 @@ export function MembershipApplicationForm({
 
   return <form ref={formRef} className="application-form" onSubmit={submit} onInput={scheduleSave} noValidate>
     <input type="hidden" name="source" value={source} />
-    <div className="application-steps" aria-label="Өтініш кезеңдері"><span><b>1</b> Жеке деректер</span><span><b>2</b> Кәсіби мәліметтер</span><span><b>3</b> Құжаттар және келісімдер</span></div>
+    <div className="application-steps" aria-label="Өтініш кезеңдері"><a href="#personal-fields"><b>1</b> Жеке деректер</a><a href="#professional-fields"><b>2</b> Кәсіби мәліметтер</a><a href="#document-fields"><b>3</b> Құжаттар және келісімдер</a></div>
     <div className={`draft-status ${saveState}`} aria-live="polite">{saveState === "saving" ? "Өзгерістер сақталуда…" : saveState === "saved" ? "Өзгерістер сақталды" : saveState === "error" ? "Соңғы өзгеріс сақталмады" : "Деректер автоматты түрде сақталады"}</div>
     {errors.form && <div className="form-alert" role="alert">{errors.form}</div>}
 
-    <fieldset><legend><b>1</b> Жеке деректер</legend><div className="form-grid">
-      <label className={invalid("surname")}>Тегі *<input name="surname" required maxLength={80} autoComplete="family-name" defaultValue={defaults.surname} aria-invalid={Boolean(errors.surname)} /><FieldError name="surname" errors={errors} /></label>
-      <label className={invalid("givenName")}>Аты *<input name="givenName" required maxLength={80} autoComplete="given-name" defaultValue={defaults.givenName} aria-invalid={Boolean(errors.givenName)} /><FieldError name="givenName" errors={errors} /></label>
-      <label className={invalid("patronymic")}>Әкесінің аты <span className="optional-label">міндетті емес</span><input name="patronymic" maxLength={80} autoComplete="additional-name" defaultValue={defaults.patronymic} aria-invalid={Boolean(errors.patronymic)} /><FieldError name="patronymic" errors={errors} /></label>
-      <label className={invalid("birthDate")}>Туған күні *<input name="birthDate" type="date" required min="1900-01-01" max={adultDateLimit()} defaultValue={defaults.birthDate} aria-invalid={Boolean(errors.birthDate)} /><FieldError name="birthDate" errors={errors} /></label>
-      <label className={invalid("regionCode")}>Өңір *<select name="regionCode" required defaultValue={defaults.regionCode} aria-invalid={Boolean(errors.regionCode)}><option value="" disabled>Өңірді таңдаңыз</option>{branches.filter((branch) => branch.status === "active").map((branch) => <option value={branch.regionCode} key={branch.regionCode}>{branch.regionName}</option>)}</select><FieldError name="regionCode" errors={errors} /></label>
-      <label className={invalid("cityDistrict")}>Қала / аудан *<input name="cityDistrict" required maxLength={120} defaultValue={defaults.cityDistrict} aria-invalid={Boolean(errors.cityDistrict)} /><FieldError name="cityDistrict" errors={errors} /></label>
-      <label className={invalid("phone")}>Телефон *<input name="phone" required maxLength={30} autoComplete="tel" placeholder="+7 700 000 00 00" defaultValue={defaults.phone} aria-invalid={Boolean(errors.phone)} /><FieldError name="phone" errors={errors} /></label>
+    <fieldset id="personal-fields" tabIndex={-1}><legend><b>1</b> Жеке деректер</legend><div className="form-grid">
+      <label className={invalid("surname")}>Тегі *<input name="surname" required maxLength={80} autoComplete="family-name" defaultValue={defaults.surname} aria-invalid={Boolean(errors.surname)} aria-describedby={errors.surname ? "surname-error" : undefined} /><FieldError name="surname" errors={errors} /></label>
+      <label className={invalid("givenName")}>Аты *<input name="givenName" required maxLength={80} autoComplete="given-name" defaultValue={defaults.givenName} aria-invalid={Boolean(errors.givenName)} aria-describedby={errors.givenName ? "givenName-error" : undefined} /><FieldError name="givenName" errors={errors} /></label>
+      <label className={invalid("patronymic")}>Әкесінің аты <span className="optional-label">міндетті емес</span><input name="patronymic" maxLength={80} autoComplete="additional-name" defaultValue={defaults.patronymic} aria-invalid={Boolean(errors.patronymic)} aria-describedby={errors.patronymic ? "patronymic-error" : undefined} /><FieldError name="patronymic" errors={errors} /></label>
+      <label className={invalid("birthDate")}>Туған күні *<input name="birthDate" type="date" required min="1900-01-01" max={adultDateLimit()} defaultValue={defaults.birthDate} aria-invalid={Boolean(errors.birthDate)} aria-describedby={errors.birthDate ? "birthDate-error" : undefined} /><FieldError name="birthDate" errors={errors} /></label>
+      <label className={invalid("regionCode")}>Өңір *<select name="regionCode" required defaultValue={defaults.regionCode} aria-invalid={Boolean(errors.regionCode)} aria-describedby={errors.regionCode ? "regionCode-error" : undefined}><option value="" disabled>Өңірді таңдаңыз</option>{branches.filter((branch) => branch.status === "active").map((branch) => <option value={branch.regionCode} key={branch.regionCode}>{branch.regionName}</option>)}</select><FieldError name="regionCode" errors={errors} /></label>
+      <label className={invalid("cityDistrict")}>Қала / аудан *<input name="cityDistrict" required maxLength={120} defaultValue={defaults.cityDistrict} aria-invalid={Boolean(errors.cityDistrict)} aria-describedby={errors.cityDistrict ? "cityDistrict-error" : undefined} /><FieldError name="cityDistrict" errors={errors} /></label>
+      <label className={invalid("phone")}>Телефон *<input name="phone" type="tel" required maxLength={30} autoComplete="tel" placeholder="+7 700 000 00 00" defaultValue={defaults.phone} aria-invalid={Boolean(errors.phone)} aria-describedby={errors.phone ? "phone-error" : undefined} /><FieldError name="phone" errors={errors} /></label>
     </div></fieldset>
 
-    <fieldset><legend><b>2</b> Кәсіби мәліметтер</legend><div className="form-grid">
+    <fieldset id="professional-fields" tabIndex={-1}><legend><b>2</b> Кәсіби мәліметтер</legend><div className="form-grid">
       <label>Қазіргі жұмыс немесе оқу орны <span className="optional-label">міндетті емес</span><input name="workplace" maxLength={240} defaultValue={defaults.workplace} /></label>
       <label>Лауазымы немесе мәртебесі <span className="optional-label">міндетті емес</span><input name="position" maxLength={160} placeholder="Мұғалім, студент, зерттеуші…" defaultValue={defaults.position} /></label>
-      <label className={invalid("educationLevelCode")}>Білім деңгейі *<select name="educationLevelCode" required defaultValue={defaults.educationLevelCode} aria-invalid={Boolean(errors.educationLevelCode)}><option value="" disabled>Білім деңгейін таңдаңыз</option>{educationLevels.map(([code, label]) => <option value={code} key={code}>{label}</option>)}</select><FieldError name="educationLevelCode" errors={errors} /></label>
+      <label className={invalid("educationLevelCode")}>Білім деңгейі *<select name="educationLevelCode" required defaultValue={defaults.educationLevelCode} aria-invalid={Boolean(errors.educationLevelCode)} aria-describedby={errors.educationLevelCode ? "educationLevelCode-error" : undefined}><option value="" disabled>Білім деңгейін таңдаңыз</option>{educationLevels.map(([code, label]) => <option value={code} key={code}>{label}</option>)}</select><FieldError name="educationLevelCode" errors={errors} /></label>
       <label>Білім алған немесе алып жатқан оқу орны <span className="optional-label">міндетті емес</span><input name="educationInstitution" maxLength={240} defaultValue={defaults.educationInstitution} /></label>
       <label className="span-2">Мамандығы / білім беру бағдарламасы <span className="optional-label">міндетті емес</span><input name="educationProgram" maxLength={240} defaultValue={defaults.educationProgram} /></label>
       <label className="span-2">Математикадағы бағыты / мамандануы <span className="optional-label">міндетті емес</span><textarea name="mathSpecialization" maxLength={500} rows={2} defaultValue={defaults.mathSpecialization} /></label>
       <label className="span-2">Кәсіби жетістіктері <span className="optional-label">міндетті емес</span><textarea name="achievements" maxLength={3000} rows={3} defaultValue={defaults.achievements} /></label>
-      <label className={`span-2 ${invalid("joiningPurpose") ?? ""}`}>Бірлестікке қосылу мақсаты *<textarea name="joiningPurpose" required minLength={10} maxLength={500} rows={3} defaultValue={defaults.joiningPurpose} aria-invalid={Boolean(errors.joiningPurpose)} /><FieldError name="joiningPurpose" errors={errors} /></label>
+      <label className={`span-2 ${invalid("joiningPurpose") ?? ""}`}>Бірлестікке қосылу мақсаты *<textarea name="joiningPurpose" required minLength={10} maxLength={500} rows={3} defaultValue={defaults.joiningPurpose} aria-invalid={Boolean(errors.joiningPurpose)} aria-describedby={errors.joiningPurpose ? "joiningPurpose-error" : undefined} /><FieldError name="joiningPurpose" errors={errors} /></label>
     </div></fieldset>
 
-    <fieldset><legend><b>3</b> Құжаттар және келісімдер</legend>
-      <label className={`file-drop ${invalid("documents") ?? ""}`}><FileLock2 size={26} /><strong>Қосымша құжаттарды тіркеу</strong><span>Міндетті емес · PDF, JPG немесе PNG · 3 файлға дейін, әрқайсысы 5 МБ-қа дейін</span><input name="documents" type="file" multiple accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" onChange={(event) => void uploadDocuments(event.currentTarget.files)} aria-invalid={Boolean(errors.documents)} /></label>
+    <fieldset id="document-fields" tabIndex={-1}><legend><b>3</b> Құжаттар және келісімдер</legend>
+      <label className={`file-drop ${invalid("documents") ?? ""}`}><FileLock2 size={26} /><strong>Қосымша құжаттарды тіркеу</strong><span>Міндетті емес · PDF, JPG немесе PNG · 3 файлға дейін, әрқайсысы 5 МБ-қа дейін</span><input name="documents" type="file" multiple accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" onChange={(event) => { const input = event.currentTarget; void uploadDocuments(input.files).finally(() => { input.value = ""; }); }} aria-invalid={Boolean(errors.documents)} aria-describedby={errors.documents ? "documents-error" : undefined} /></label>
       <FieldError name="documents" errors={errors} />
       {documents.length > 0 && <div className="draft-document-list">{documents.map((document) => <div key={document.id}><span><strong>{document.originalName}</strong><small>{Math.ceil(document.sizeBytes / 1024)} КБ · өтінішке тіркелген</small></span><button type="button" onClick={() => void removeDocument(document.id)} aria-label={`${document.originalName} құжатын алып тастау`}><Trash2 size={16} /></button></div>)}</div>}
-      <label className={`terms-check ${invalid("termsAccepted") ?? ""}`}><input name="termsAccepted" type="checkbox" defaultChecked={defaults.termsAccepted} aria-invalid={Boolean(errors.termsAccepted)} /><span><a href="/membership/terms" target="_blank" rel="noreferrer">Мүшелік шарттарымен</a> таныстым және қабылдаймын.<FieldError name="termsAccepted" errors={errors} /></span></label>
-      <label className={`terms-check ${invalid("privacyAccepted") ?? ""}`}><input name="privacyAccepted" type="checkbox" defaultChecked={defaults.privacyAccepted} aria-invalid={Boolean(errors.privacyAccepted)} /><span><a href="/privacy" target="_blank" rel="noreferrer">Дербес деректерді өңдеу тәртібімен</a> таныстым және дербес деректерімді өңдеуге келісемін.<FieldError name="privacyAccepted" errors={errors} /></span></label>
+      <label className={`terms-check ${invalid("termsAccepted") ?? ""}`}><input name="termsAccepted" type="checkbox" defaultChecked={defaults.termsAccepted} aria-invalid={Boolean(errors.termsAccepted)} aria-describedby={errors.termsAccepted ? "termsAccepted-error" : undefined} /><span><a href="/membership/terms" target="_blank" rel="noreferrer">Мүшелік шарттарымен</a> таныстым және қабылдаймын.<FieldError name="termsAccepted" errors={errors} /></span></label>
+      <label className={`terms-check ${invalid("privacyAccepted") ?? ""}`}><input name="privacyAccepted" type="checkbox" defaultChecked={defaults.privacyAccepted} aria-invalid={Boolean(errors.privacyAccepted)} aria-describedby={errors.privacyAccepted ? "privacyAccepted-error" : undefined} /><span><a href="/privacy" target="_blank" rel="noreferrer">Дербес деректерді өңдеу тәртібімен</a> таныстым және дербес деректерімді өңдеуге келісемін.<FieldError name="privacyAccepted" errors={errors} /></span></label>
     </fieldset>
     <button className="button button-primary submit-button" type="submit" disabled={submitting}>{submitting ? "Жіберілуде…" : <>Өтінішті жіберу <CheckCircle2 size={18} /></>}</button>
   </form>;
