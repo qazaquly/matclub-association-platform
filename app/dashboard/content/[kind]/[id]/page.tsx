@@ -1,3 +1,4 @@
+import { selectedHomeItem } from "@/db/home-feature";
 import { ArrowLeft, ExternalLink, ShieldCheck } from "lucide-react";
 import { notFound } from "next/navigation";
 import { DynamicContentForm } from "@/app/components/DynamicContentForm";
@@ -19,6 +20,7 @@ export default async function DynamicContentEditPage({ params, searchParams }: {
   const publicHref = "slug" in item ? `${meta.publicHref}/${item.slug}` : meta.publicHref;
   const canPublish = canPublishDynamicContent(actor);
   const isVisible = item.status === "PUBLISHED" || item.status === "active";
+  const featureSelected = canPublish && isVisible && rawKind !== "partners" ? (await selectedHomeItem(rawKind)) === rawKind + "/" + id : undefined;
   const isArchived = item.status === "ARCHIVED" || item.status === "inactive";
   const deletionDate = automaticDeletionDate(rawKind, item);
 
@@ -29,7 +31,7 @@ export default async function DynamicContentEditPage({ params, searchParams }: {
     {state.error && <div className="dash-alert error">Өзгеріс сақталмады. Өрістерді, сілтемені және суретті тексеріңіз.</div>}
     <div className="content-admin-note"><ShieldCheck size={22} /><p>Жарияланған материалды түзетуге болады: нұсқа ашық күйінде қалады, ал алдыңғы және жаңа мәндер аудитке жазылады.</p></div>
     {deletionDate && <div className="dash-alert error">Бұл материал архивте. Қайтарылмаса, {formatDate(deletionDate.toISOString())} күні автоматты түрде толық өшеді. Аудит жазбасы сақталады.</div>}
-    <section className="panel dynamic-edit-panel"><DynamicContentForm kind={rawKind} item={item} action={`/api/content/${rawKind}/${id}`} submitLabel={isVisible ? "Сайттағы нұсқаны жаңарту" : "Өзгерісті сақтау"} /></section>
+    <section className="panel dynamic-edit-panel"><DynamicContentForm featureSelected={featureSelected} kind={rawKind} item={item} action={`/api/content/${rawKind}/${id}`} submitLabel={isVisible ? "Сайттағы нұсқаны жаңарту" : "Өзгерісті сақтау"} /></section>
     <div className="dynamic-publish-bar">
       {isVisible && <a className="button" href={publicHref} target="_blank" rel="noreferrer"><ExternalLink size={15} /> Ашық бетті көру</a>}
       {canPublish && <div>

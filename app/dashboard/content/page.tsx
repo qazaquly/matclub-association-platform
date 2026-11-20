@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { getPublicContentValues } from "@/db/queries";
 import { getCurrentUser } from "@/lib/auth";
 import { canManageDynamicContent, canManagePublicContent } from "@/lib/authorization";
-import { publicContentDefinitions } from "@/lib/public-content";
+import { visiblePublicContentDefinitions } from "@/lib/public-content";
 
 export default async function PublicContentPage({ searchParams }: { searchParams: Promise<{ view?: string; success?: string; error?: string }> }) {
   const actor = (await getCurrentUser())!;
@@ -12,7 +12,7 @@ export default async function PublicContentPage({ searchParams }: { searchParams
   const dynamicAccess = canManageDynamicContent(actor);
   if (!fixedAccess && !dynamicAccess) notFound();
   const [values, state] = await Promise.all([getPublicContentValues(), searchParams]);
-  const sections = Map.groupBy(publicContentDefinitions, (definition) => definition.section);
+  const sections = Map.groupBy(visiblePublicContentDefinitions, (definition) => definition.section);
 
   return <main className="dashboard-content">
     <div className="dash-page-heading"><div><p>Ашық сайтты басқару</p><h1>Сайт мазмұны</h1></div><span className="immutable-pill"><ShieldCheck size={15} /> Құрылым қорғалған</span></div>

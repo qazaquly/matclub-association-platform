@@ -867,7 +867,7 @@ test("production worker boots and the database-backed public site renders the co
   const html = await response.text();
   assert.equal(response.status, 200, html);
   assert.match(html, /Республикалық математиктер бірлестігі/i);
-  assert.match(html.replace(/<!--.*?-->/gs, ""), /Математика — ортақ тіл\..*Бірлестік — ортақ күш\./s);
+  assert.match(html.replace(/<!--.*?-->/gs, ""), /Тақ сандардан шаршы қалай құралады/);
   assert.doesNotMatch(html, /Қазақстан математиктерінің республикалық қауымдастығы|ҚМРҚ/iu);
   assert.doesNotMatch(html, /olympiad registration|scoring protocol|diploma/i);
 
@@ -1393,14 +1393,14 @@ test("structured public content is capability-gated, validated, published immedi
   await client.connect();
   try {
     const rows = await client.query("SELECT key, value FROM public_content ORDER BY key");
-    const original = rows.rows.find((row) => row.key === "home.about.heading")?.value;
+    const original = rows.rows.find((row) => row.key === "home.hero.intro")?.value;
     assert.ok(original);
     const changedRows = rows.rows.map((row) => [
       row.key,
       row.key === "contact.email" ? "contact@example.test" : row.key === "contact.phone" ? "+7 700 000 00 00" :
       row.key.endsWith("Destination") || row.key.endsWith("destination") ? row.value : `${row.value} Сынақ.`,
     ]);
-    const changed = changedRows.find(([key]) => key === "home.about.heading")?.[1];
+    const changed = changedRows.find(([key]) => key === "home.hero.intro")?.[1];
     assert.ok(changed);
     assert.ok(changedRows.filter(([key, value]) => value !== rows.rows.find((row) => row.key === key)?.value).length > 20);
     const form = () => new URLSearchParams(changedRows);
@@ -1443,7 +1443,7 @@ test("structured public content is capability-gated, validated, published immedi
     const audit = await client.query(`
       SELECT actor_user_id, previous_value, new_value
       FROM audit_logs
-      WHERE action_type = 'public_content.updated' AND target_entity_id = 'home.about.heading'
+      WHERE action_type = 'public_content.updated' AND target_entity_id = 'home.hero.intro'
       ORDER BY created_at DESC LIMIT 2
     `);
     assert.equal(audit.rowCount, 2);

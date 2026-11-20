@@ -646,3 +646,31 @@ textarea { resize: vertical; }
   .calendar-day a small { font-size: .7rem; }
   .event-calendar:not(:has(.has-events)) { display: none; }
 }
+
+/* Public home and its illustrated reading page */
+.club-home,.club-reading{background:#fcfbf5;color:#173f33}
+.club-home .container{max-width:1320px}
+.club-intro{margin:0;border-bottom:1px solid #c5cfc0;padding:16px 0;color:#405b4c;font-size:.95rem}
+.club-feature{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:5%;align-items:center;border-bottom:1px solid #adbdac;padding:clamp(28px,4vw,60px) 0}
+.club-feature.text-only{grid-template-columns:minmax(0,880px)}
+.club-kicker{font-size:.78rem;font-weight:750;letter-spacing:.08em;text-transform:uppercase;color:#516e4d;margin:0 0 14px}
+.club-kicker::before{content:"";display:inline-block;width:23px;height:3px;background:#6b8657;vertical-align:middle;margin-right:9px}
+.club-feature h1,.club-paths h2,.club-about h2,.club-reading h1,.club-reading h2,.club-event h2{font-family:Georgia,"DejaVu Serif",serif;font-weight:500;line-height:1.08;letter-spacing:-.04em;color:#153e32;margin:0;overflow-wrap:anywhere}
+.club-feature h1{font-size:clamp(2.65rem,4.9vw,4.8rem);max-width:18ch}
+.club-feature.text-only h1{max-width:28ch}
+.club-summary,.club-reading p{font-size:1.12rem;line-height:1.6;color:#42594c}
+.club-summary{max-width:56ch;margin:19px 0}
+.club-actions,.club-about nav{display:flex;flex-wrap:wrap;align-items:center;gap:18px}
+.club-actions a,.club-about a,.club-reading a{font-weight:650;text-decoration:underline;text-underline-offset:4px}
+.club-button,.club-actions a.club-button{display:inline-flex;align-items:center;justify-content:center;gap:10px;padding:13px 19px;border-radius:6px;background:#194c39;color:white;font-weight:650;text-decoration:none}
+.club-cover,.club-reading img{display:block;width:100%;height:auto;border:1px solid #c4d0bd;border-radius:6px;background:#e9eedf}
+.club-cover{max-height:420px;object-fit:contain}
+.club-paths{padding:30px 0 40px}.club-paths h2,.club-event h2{font-size:clamp(1.8rem,3vw,2.65rem)}
+.club-paths>div{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px;margin-top:20px}
+.club-paths a{display:block;border-top:2px solid #638063;padding:16px 0;color:inherit}
+.club-paths strong{display:flex;justify-content:space-between;gap:8px;font-size:1.18rem}.club-paths a p{color:#455e4e;line-height:1.55;margin:8px 0}
+.club-about,.club-event,.club-equation{background:#e9eddf}.club-about .container,.club-event{display:flex;align-items:center;justify-content:space-between;gap:22px;padding-block:24px}
+.club-about h2{font-size:1.75rem}.club-about nav{font-size:.92rem}.club-event{padding:24px;margin-top:25px;flex-wrap:wrap}.club-event>div{flex:1 1 420px;min-width:0}.club-event p:last-child{margin:10px 0 0}.club-event a{flex:none}
+.club-reading{padding:42px 0 60px}.club-reading .club-kicker{font-size:.8rem;margin:20px 0 8px}.club-reading h1{font-size:clamp(2.3rem,5vw,4rem)}.club-reading h2{font-size:1.8rem;margin:24px 0 8px}.club-reading img{max-width:620px}.club-equation{padding:14px;text-align:center}
+@media(max-width:730px){.club-feature{grid-template-columns:minmax(0,1fr);gap:20px;padding:25px 0}.club-feature h1{font-size:clamp(2.35rem,8vw,3.3rem)}.club-intro{font-size:.83rem;padding:11px 0}.club-summary{font-size:1rem;margin:13px 0}.club-paths>div{display:block}.club-paths a{padding:12px 0}.club-about .container{align-items:flex-start;flex-direction:column}.club-event{padding:18px}.club-paths{padding:22px 0}.club-actions{gap:14px}}
+form label.home-feature-option{display:flex;align-items:center;gap:9px;flex-direction:row}form label.home-feature-option input[type=checkbox]{width:18px;height:18px;min-height:0}

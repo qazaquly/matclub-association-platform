@@ -17,13 +17,13 @@ export function BranchDirectory({ branches, query, cabinet = false }: {
   return <>
     <form className={styles.filters} method="get">
       <label>{cabinet ? "Филиал, өңір немесе директор" : "Филиал немесе өңір"}<input name="q" type="search" defaultValue={query.q} maxLength={160} /></label>
-      <label>Сұрыптау<select name="sort" defaultValue={sort || ""}>
-        <option value="">Өңір атауы бойынша</option><option value="members">Мүшесі көп өңірлер</option>
-        <option value="applicants">Үміткері көп өңірлер</option><option value="reserve">Резерві көп өңірлер</option>
-      </select></label>
+      {cabinet && <label>Сұрыптау<select name="sort" defaultValue={sort || ""}>
+        <option value="">Өңір атауы бойынша</option>{cabinet && <><option value="members">Мүшесі көп өңірлер</option>
+        <option value="applicants">Үміткері көп өңірлер</option><option value="reserve">Резерві көп өңірлер</option></>}
+      </select></label>}
       <button className="button" type="submit">Көрсету</button>{(needle || sort) && <a href={base}>Тазарту</a>}
     </form>
-    {rows.length ? <table className={styles.directory}>
+    {!cabinet && rows.length > 0 ? <ul className={styles.publicList}>{rows.map(b => <li key={b.id}><strong>{b.regionName}</strong><a href={"/events?period=all&region=" + encodeURIComponent(b.regionName)}>Өңірдің кездесулері →</a></li>)}</ul> : rows.length ? <table className={styles.directory}>
       <caption>{rows.length} филиал</caption>
       <thead><tr><th scope="col">Өңір</th><th scope="col">Мүше</th><th scope="col">Үміткер</th><th scope="col">Резерв</th></tr></thead>
       <tbody>{rows.map((b) => {

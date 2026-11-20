@@ -14,3 +14,4 @@
   .directory th,.directory td { padding:6px 4px; }
   .directory th:first-child { width:46%; }
 }
+.publicList{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:12px 24px}.publicList li{display:grid;gap:8px;border-top:1px solid var(--line);padding:14px 0}.publicList a{color:var(--forest-2);text-decoration:underline;text-underline-offset:3px}

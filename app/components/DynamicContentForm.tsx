@@ -1,4 +1,5 @@
 /* eslint-disable @next/next/no-img-element -- Images come from the audited public-media route and have no static dimensions. */
+import { HomeFeatureOption } from "./HomeFeatureOption";
 import type { DynamicContentKind } from "@/lib/dynamic-content";
 
 interface FormItem {
@@ -24,7 +25,7 @@ function dateValue(value?: Date | null) {
   return value?.toISOString().slice(0, 10) ?? "";
 }
 
-export function DynamicContentForm({ kind, item, action, submitLabel, canPublish = false }: { kind: DynamicContentKind; item?: FormItem | null; action: string; submitLabel: string; canPublish?: boolean }) {
+export function DynamicContentForm({ kind, item, action, submitLabel, canPublish = false, featureSelected }: { kind: DynamicContentKind; item?: FormItem | null; action: string; submitLabel: string; featureSelected?: boolean; canPublish?: boolean }) {
   const mediaId = item?.coverMediaId ?? item?.logoMediaId;
   return <form className="dynamic-content-form" action={action} method="post" encType="multipart/form-data">
     {kind === "partners" ? <>
@@ -51,6 +52,7 @@ export function DynamicContentForm({ kind, item, action, submitLabel, canPublish
     </>}
     <label className="content-field-wide"><span>{kind === "partners" ? "Логотип" : "Мұқаба суреті"}</span><input name="image" type="file" accept="image/jpeg,image/png,image/webp,image/avif" /><small>JPG, PNG, WebP немесе AVIF · 8 МБ-қа дейін</small></label>
     {mediaId && <div className="current-media content-field-wide"><img src={`/api/public-media/${mediaId}`} alt="Қазіргі сурет" /><label><input name="removeImage" type="checkbox" /> Суретті алып тастау</label></div>}
+    {(kind !== "partners" && (canPublish || featureSelected !== undefined)) && <HomeFeatureOption selected={featureSelected}/>}
     <div className="editor-actions content-field-wide">
       <button className={canPublish ? "button" : "button button-primary"} name="action" value="save" type="submit">{submitLabel}</button>
       {canPublish && <button className="button button-primary" name="action" value="publish" type="submit">Сайтқа жариялау</button>}

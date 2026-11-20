@@ -42,7 +42,7 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
     <section className="section container events-public-section">
       <form className="events-public-filter" method="get">
         <label>Кезең<select name="period" defaultValue={period}><option value="upcoming">Алдағы</option><option value="past">Өткен</option><option value="all">Барлығы</option></select></label>
-        <label>Өңір<select name="region" defaultValue={state.region ?? ""}><option value="">Барлық өңір</option>{regions.map((region) => <option value={region} key={region}>{region}</option>)}</select></label>
+        <label>Өңір<select name="region" defaultValue={state.region ?? ""}><option value="">Барлық өңір</option>{state.region && !regions.includes(state.region) && <option value={state.region}>{state.region}</option>}{regions.map((region) => <option value={region} key={region}>{region}</option>)}</select></label>
         <label>Көрініс<select name="view" defaultValue={view}><option value="list">Тізім</option><option value="calendar">Күнтізбе</option></select></label>
         {view === "calendar" && <label>Ай<input name="month" type="month" defaultValue={selectedMonth} /></label>}
         <button className="button button-primary" type="submit">Көрсету</button>
@@ -62,7 +62,7 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
         <div className="event-public-date"><CalendarDays size={18} /><span><strong>{formatDate(item.startAt.toISOString())}</strong><small>{formatDate(item.startAt.toISOString(), true).split(", ")[1]}</small></span></div>
         <div className="event-public-copy"><div className="event-meta-row"><span>{eventScopeLabel(item.eventScope)}</span><span>{eventFormatLabel(item.eventFormat)}</span>{item.status !== "PUBLISHED" && <span className={`event-public-status ${item.status.toLowerCase()}`}>{eventStatusLabel(item.status)}</span>}</div><h2>{item.title}</h2><p>{item.summary}</p><small><MapPin size={13} /> {eventLocation(item)}</small></div>
         <a className="event-public-link" href={`/events/${item.slug}`}>Толық ақпарат <ArrowRight size={16} /></a>
-      </article>)}{filtered.length === 0 && <div className="public-empty-state"><CalendarDays size={28} /><h2>{items.length ? "Бұл сүзгіге сәйкес іс-шара жоқ" : "Әзірге жарияланған іс-шара жоқ"}</h2>{items.length > 0 && <a href="?period=all">Барлық іс-шараны көру</a>}</div>}</div>}
+      </article>)}{filtered.length === 0 && <div className="public-empty-state"><CalendarDays size={28} /><h2>{items.length ? "Бұл сүзгіге сәйкес іс-шара жоқ" : "Әзірге жарияланған іс-шара жоқ"}</h2>{(items.length > 0 || state.region) && <a href="?period=all">Барлық іс-шараны көру</a>}</div>}</div>}
       <div className="event-view-note">{view === "calendar" ? <CalendarDays size={16} /> : <List size={16} />} Тек жарияланған іс-шаралар көрсетіледі.</div>
     </section>
   </main></PublicShell>;

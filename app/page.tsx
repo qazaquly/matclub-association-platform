@@ -1,140 +1,33 @@
-/* eslint-disable @next/next/no-html-link-for-pages -- Vinext beta client routing breaks normal public left-click navigation. */
-import { ArrowRight, BookOpen, Building2, CalendarDays, Network, ShieldCheck, Sparkles, Users } from "lucide-react";
-import { getCurrentUser } from "@/lib/auth";
+/* eslint-disable @next/next/no-html-link-for-pages, @next/next/no-img-element -- Public routes use native navigation and local or uploaded illustrations. */
+import { ArrowRight, ArrowUpRight } from "lucide-react";
 import { PublicShell } from "./components/PublicShell";
 import { getPublicContentValues } from "@/db/queries";
+import { getHomeStory } from "@/db/home-feature";
 import { getNearestUpcomingEvent } from "@/db/events";
 import { eventLocation, eventStatusLabel } from "@/lib/events";
 import { formatDate } from "@/lib/format";
-
-const priorities = [
-  {
-    icon: Users,
-    number: "01",
-    title: "Кәсіби бірлік",
-    text: "Мұғалімдер, ғалымдар мен әдіскерлер бір-бірімен тәжірибе алмасады.",
-  },
-  {
-    icon: Network,
-    number: "02",
-    title: "Өңірлік желі",
-    text: "Әр филиал өз өңіріндегі математиктерді біріктіреді.",
-  },
-  {
-    icon: ShieldCheck,
-    number: "03",
-    title: "Мүшенің жеке кабинеті",
-    text: "Қатысқан іс-шараларыңыз бен жобаларыңызды кабинеттен көре аласыз.",
-  },
-];
+import { squareMaterial } from "@/lib/club-material";
 
 export const dynamic = "force-dynamic";
+const routes = [
+  ["/events", "Кездесулер", "Қашан, қайда өтетінін және қалай қатысуға болатынын қараңыз."],
+  ["/branches", "Өңірдегі филиалдар", "Өз қалаңыздағы немесе облысыңыздағы филиалды табыңыз."],
+  ["/publications", "Әдістемелік материалдар", "Сабаққа, үйірмеге және өз бетіңізше жұмыс істеуге арналған қор."],
+];
 
 export default async function Home() {
-  const [content, nearestEvent, user] = await Promise.all([getPublicContentValues(), getNearestUpcomingEvent(), getCurrentUser()]);
-  const cabinet = Boolean(user && user.membershipStatus !== "registered_user");
-  const [sloganLead, ...sloganRest] = content["home.hero.slogan"].split(". ");
-  return (
-    <PublicShell content={content}>
-      <main>
-        <section className="hero">
-          <div className="hero-grid" aria-hidden="true" />
-          <div className="container hero-inner">
-            <div className="hero-copy">
-              <p className="eyebrow"><Sparkles size={15} /> {content["home.hero.headline"]}</p>
-              <h1>{sloganLead}{sloganRest.length > 0 ? "." : ""}{sloganRest.length > 0 && <><br /><em>{sloganRest.join(". ")}</em></>}</h1>
-              <p className="hero-lead">{content["home.hero.intro"]}</p>
-              <div className="hero-actions">
-                <a className="button button-primary" href={cabinet ? "/dashboard" : content["home.hero.primaryDestination"]}>
-                  {cabinet ? "Жеке кабинетке өту" : content["home.hero.primaryLabel"]} <ArrowRight size={18} />
-                </a>
-                <a className="button button-ghost" href={content["home.hero.secondaryDestination"]}>{content["home.hero.secondaryLabel"]}</a>
-              </div>
-            </div>
-            <div className="hero-mark" aria-hidden="true">
-              <span className="formula formula-one">∫</span>
-              <span className="formula formula-two">π</span>
-              <span className="formula formula-three">∞</span>
-              <div className="orbit orbit-one" />
-              <div className="orbit orbit-two" />
-              <div className="hero-monogram">ҚМ</div>
-            </div>
-          </div>
-
-        </section>
-
-        <section className="section container">
-          <div className="section-heading split-heading">
-            <div>
-              <p className="eyebrow dark">Бірлестік туралы</p>
-              <h2>{content["home.about.heading"]}</h2>
-            </div>
-            <p>{content["home.about.intro"]}</p>
-          </div>
-          <div className="priority-grid">
-            {priorities.map(({ icon: Icon, number, title, text }) => (
-              <article className="priority-card" key={number}>
-                <div className="card-top"><span>{number}</span><Icon size={24} /></div>
-                <h3>{title}</h3><p>{text}</p>
-              </article>
-            ))}
-          </div>
-        </section>
-
-        <section className="structure-section">
-          <div className="container structure-grid">
-            <div>
-              <p className="eyebrow">Құрылым</p>
-              <h2>{content["home.structure.heading"]}</h2>
-              <p className="structure-copy">{content["home.structure.intro"]}</p>
-              <a className="text-link light" href={content["home.structure.ctaDestination"]}>{content["home.structure.ctaLabel"]} <ArrowRight size={17} /></a>
-            </div>
-            <div className="org-map" aria-label="Бірлестік құрылымы">
-              <div className="org-node primary"><span>01</span><strong>Президент</strong><small>Стратегиялық басқару</small></div>
-              <div className="org-connector" />
-              <div className="org-row">
-                <div className="org-node"><span>02</span><strong>Вице-президенттер</strong><small>Бағыттарды үйлестіру</small></div>
-                <div className="org-node"><span>03</span><strong>Департаменттер</strong><small>Кәсіби жұмыс</small></div>
-                <div className="org-node"><span>04</span><strong>Филиалдар</strong><small>Өңірлік қызмет</small></div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="section container">
-          <div className="section-heading inline-heading">
-            <div><p className="eyebrow dark">Қызмет бағыттары</p><h2>{content["home.projects.heading"]}</h2></div>
-            <a className="text-link" href={content["home.projects.ctaDestination"]}>{content["home.projects.ctaLabel"]} <ArrowRight size={17} /></a>
-          </div>
-          <div className="agenda-grid">
-            <a href="/events" className="agenda-card featured">
-              <CalendarDays size={26} /><span>Іс-шаралар</span>
-              <h3>Кездесулер күнтізбесі</h3><ArrowRight size={20} />
-            </a>
-            <a href="/publications" className="agenda-card">
-              <BookOpen size={26} /><span>Әдістемелік қор</span>
-              <h3>Математикадан әдістемелік материалдар</h3><ArrowRight size={20} />
-            </a>
-            <a href="/branches" className="agenda-card">
-              <Building2 size={26} /><span>Өңірлік жұмыс</span>
-              <h3>Өз өңіріңіздегі филиалды табыңыз</h3><ArrowRight size={20} />
-            </a>
-          </div>
-        </section>
-
-        {nearestEvent && <section className="container nearest-event"><div><p className="eyebrow">Жақын іс-шара</p><h2>{nearestEvent.title}</h2><p>{nearestEvent.summary}</p></div><div className="nearest-event-meta"><span><CalendarDays size={17} /> {formatDate(nearestEvent.startAt.toISOString(), true)}</span><span>{eventLocation(nearestEvent)}</span><span>{eventStatusLabel(nearestEvent.status)}</span><a className="button button-white" href={`/events/${nearestEvent.slug}`}>Толық ақпарат <ArrowRight size={17} /></a></div></section>}
-
-        {!cabinet && <section className="container membership-callout">
-          <div>
-            <p className="eyebrow">Бірлестікке қосылыңыз</p>
-            <h2>{content["home.membership.heading"]}</h2>
-          </div>
-          <div>
-            <p>{content["home.membership.intro"]}</p>
-            <a className="button button-white" href={content["home.membership.ctaDestination"]}>{content["home.membership.ctaLabel"]} <ArrowRight size={18} /></a>
-          </div>
-        </section>}
-      </main>
-    </PublicShell>
-  );
+  const [content, story, event] = await Promise.all([getPublicContentValues(), getHomeStory(), getNearestUpcomingEvent()]);
+  const item = story ?? squareMaterial;
+  const image = story ? (story.coverMediaId ? "/api/public-media/" + story.coverMediaId : null) : squareMaterial.image;
+  return <PublicShell content={content}><main className="club-home"><div className="container">
+    <p className="club-intro">{content["home.hero.intro"]}</p>
+    <section className={"club-feature" + (image ? "" : " text-only")}>
+      <div><p className="club-kicker">{story?.section ?? "Есеп талқысы"}</p><h1>{item.title}</h1><p className="club-summary">{item.summary}</p>
+      <div className="club-actions"><a className="club-button" href={item.href}>{story ? "Толық оқу" : "Есепті ашу"} <ArrowRight size={17}/></a><a href="/publications">Барлық материал</a></div></div>
+      {image && <img className="club-cover" src={image} alt={story ? "" : squareMaterial.alt} />}
+    </section>
+    {event && <section className="club-event"><div><p className="club-kicker">Алдағы кездесу</p><h2>{event.title}</h2><p>{formatDate(event.startAt.toISOString(), true)} · {eventLocation(event)}{event.status === "POSTPONED" && " · " + eventStatusLabel(event.status)}</p></div><a className="club-button" href={"/events/" + event.slug}>Кездесу туралы <ArrowRight size={17}/></a></section>}
+    <section className="club-paths"><h2>Бірлестікте не бар?</h2><div>{routes.map(([href, title, description]) => <a key={href} href={href}><strong>{title}<ArrowUpRight size={19}/></strong><p>{description}</p></a>)}</div></section>
+    </div><section className="club-about"><div className="container"><h2>Бірлестік туралы</h2><nav aria-label="Бірлестік туралы ақпарат"><a href="/about">Біз туралы</a><a href="/structure">Басшылық</a><a href="/partners">Серіктестер</a><a href="/membership/terms">Мүшелік шарттары</a></nav></div></section>
+    </main></PublicShell>;
 }

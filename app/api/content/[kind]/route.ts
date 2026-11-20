@@ -1,3 +1,4 @@
+import { updateHomeSelection } from "@/db/home-feature";
 import { getDb } from "@/db";
 import { authenticateRequest } from "@/lib/auth";
 import { canManageDynamicContent, canPublishDynamicContent, canManagePublicMedia } from "@/lib/authorization";
@@ -47,6 +48,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ kin
       } });
 
       if (publish) await activatePublicMedia(transaction, freshMediaId);
+      if (publish && rawKind !== "partners") await updateHomeSelection(transaction, rawKind, id, actor.id, form);
       await transaction.auditLog.create({ data: {
         id: crypto.randomUUID(), actorUserId: actor.id, actionType: publish ? "dynamic_content.published" : "dynamic_content.created",
         targetEntity: rawKind, targetEntityId: id, newValue: serializeAuditValue(created),

@@ -79,6 +79,11 @@ export function validatePublicContentValue(key: string, rawValue: unknown) {
   return value;
 }
 
+// Keep previously saved copy for compatibility; show editors only fields still rendered.
+export const visiblePublicContentDefinitions = publicContentDefinitions.filter(({ key }) =>
+  !key.startsWith("home.") || ["home.hero.intro", "home.hero.primaryLabel", "home.hero.primaryDestination"].includes(key)
+);
+
 export const publicContentSeedRows = publicContentDefinitions.map((definition) => ({
   key: definition.key,
   section: definition.section,

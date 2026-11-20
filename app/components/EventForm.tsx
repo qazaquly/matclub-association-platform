@@ -1,5 +1,6 @@
 "use client";
 /* eslint-disable @next/next/no-img-element -- Event covers use the audited public-media route. */
+import { HomeFeatureOption } from "./HomeFeatureOption";
 import { PersonSelect } from "@/app/components/PersonSelect";
 
 import { useState } from "react";
@@ -36,7 +37,7 @@ interface EventFormOptions {
 }
 
 export function EventForm({
-  action, item, options, canChooseNational, canManageMedia, submitLabel, canPublish = false,
+  action, item, options, canChooseNational, canManageMedia, submitLabel, canPublish = false, featureSelected,
 }: {
   action: string;
   item?: EventFormItem | null;
@@ -44,7 +45,7 @@ export function EventForm({
   canChooseNational: boolean;
   canManageMedia: boolean;
   submitLabel: string;
-  canPublish?: boolean;
+  featureSelected?: boolean; canPublish?: boolean;
 }) {
   const defaultScope = item?.eventScope ?? (canChooseNational ? "NATIONAL" : "BRANCH");
   const [scope, setScope] = useState(defaultScope);
@@ -79,6 +80,7 @@ export function EventForm({
 
     {canManageMedia && <label className="content-field-wide"><span>Мұқаба суреті</span><input name="image" type="file" accept="image/jpeg,image/png,image/webp,image/avif" /><small>JPG, PNG, WebP немесе AVIF · 8 МБ-қа дейін</small></label>}
     {item?.coverMediaId && <div className="current-media content-field-wide"><img src={`/api/public-media/${item.coverMediaId}`} alt="Іс-шара мұқабасы" />{canManageMedia && <label><input name="removeImage" type="checkbox" /> Суретті алып тастау</label>}</div>}
+    {(canPublish || featureSelected !== undefined) && <HomeFeatureOption selected={featureSelected}/>}
     <div className="editor-actions content-field-wide">
       <button className={item ? "button button-primary" : "button"} name="action" value="save" type="submit">{submitLabel}</button>
       {!item && <button className="button button-primary" name="action" value={canPublish ? "publish" : "submit"}>{canPublish ? "Сайтқа жариялау" : "Қарауға жіберу"}</button>}

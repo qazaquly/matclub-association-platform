@@ -1,3 +1,4 @@
+import { updateHomeSelection } from "@/db/home-feature";
 import { getDb } from "@/db";
 import { authenticateRequest } from "@/lib/auth";
 import { canAccessManagedEvent, canManageGlobalEvents, canManagePublicMedia, canPublishEvents } from "@/lib/authorization";
@@ -100,6 +101,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         reason = statusNote || `Іс-шара мәртебесі ${status} күйіне өзгертілді`;
       }
 
+      if (action === "save" && global && canPublishEvents(actor) && ["PUBLISHED", "POSTPONED"].includes(updated.status)) await updateHomeSelection(transaction, "events", id, actor.id, form);
       await transaction.auditLog.create({ data: {
         id: crypto.randomUUID(), actorUserId: actor.id, actionType, targetEntity: "event", targetEntityId: id,
         previousValue: serializeAuditValue(previous), newValue: serializeAuditValue(updated), reason,
