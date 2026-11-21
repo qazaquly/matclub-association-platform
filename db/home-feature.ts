@@ -29,14 +29,14 @@ export async function getHomeStory() {
   const [kind, id] = reference.split("/");
   if (!id) return null;
   const where = { id, status: "PUBLISHED", archivedAt: null, publishedAt: { not: null } };
-  const select = { title: true, slug: true, coverMediaId: true };
+  const select = { title: true, slug: true, coverMediaId: true, publishedAt: true };
   const db = getDb();
   if (kind === "news") {
     const item = await db.news.findFirst({ where, select: { ...select, lead: true } });
-    return item && { ...item, summary: item.lead, section: "Жаңалықтар", href: "/news/" + item.slug };
+    return item && { ...item, kind, summary: item.lead, section: "Жаңалықтар", href: "/news/" + item.slug };
   }
   if (kind !== "publications" && kind !== "projects") return null;
   const query = { where, select: { ...select, summary: true } };
   const item = kind === "projects" ? await db.publicProject.findFirst(query) : await db.publication.findFirst(query);
-  return item && { ...item, section: kind === "projects" ? "Жобалар" : "Материалдар", href: "/" + kind + "/" + item.slug };
+  return item && { ...item, kind, section: kind === "projects" ? "Жобалар" : "Материалдар", href: "/" + kind + "/" + item.slug };
 }

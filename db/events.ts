@@ -72,17 +72,18 @@ export async function getPublicEvent(slug: string) {
   });
 }
 
-export async function getNearestUpcomingEvent(now = new Date()) {
+export async function listHomeEvents(now = new Date()) {
   const reference = await selectedHomeItem("events");
+  const pinnedId = reference?.startsWith("events/") ? reference.slice(7) : undefined;
+  const where = { status: { in: ["PUBLISHED", "POSTPONED"] }, publishedAt: { not: null }, archivedAt: null, startAt: { gte: now } };
   const query = {
-    where: { status: { in: ["PUBLISHED", "POSTPONED"] }, publishedAt: { not: null }, archivedAt: null, startAt: { gte: now } },
-    include: { branch: { select: { regionName: true } }, coverMedia: true },
-    orderBy: { startAt: "asc" as const },
+    select: { id: true, slug: true, title: true, summary: true, status: true, startAt: true, eventFormat: true, venue: true, regionName: true, branch: { select: { regionName: true } } },
+    orderBy: [{ startAt: "asc" as const }, { id: "asc" as const }],
   };
   const db = getDb();
-  if (reference?.startsWith("events/")) {
-    const selected = await db.event.findFirst({ ...query, where: { ...query.where, id: reference.slice(7) } });
-    if (selected) return selected;
-  }
-  return db.event.findFirst(query);
+  const [pinned, next] = await Promise.all([
+    pinnedId ? db.event.findFirst({ ...query, where: { ...where, id: pinnedId } }) : null,
+    db.event.findMany({ ...query, where, take: 2 }),
+  ]);
+  return pinned ? [pinned, ...next.filter(event => event.id !== pinned.id)].slice(0, 2) : next;
 }

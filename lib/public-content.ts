@@ -12,23 +12,23 @@ export interface PublicContentDefinition {
 export const publicContentDefinitions = [
   { key: "home.hero.headline", section: "Басты бет · кіріспе", label: "Негізгі тақырып", kind: "text", defaultValue: "Қазақстанның кәсіби математикалық қауымдастығы", maxLength: 140 },
   { key: "home.hero.slogan", section: "Басты бет · кіріспе", label: "Ұран", kind: "text", defaultValue: "Математика — ортақ тіл. Бірлестік — ортақ күш.", maxLength: 160 },
-  { key: "home.hero.intro", section: "Басты бет · кіріспе", label: "Кіріспе мәтін", kind: "textarea", defaultValue: "Бірлестік Қазақстанның математика мұғалімдерін, оқытушыларын, ғалымдары мен әдіскерлерін біріктіреді.", maxLength: 600 },
-  { key: "home.hero.primaryLabel", section: "Басты бет · кіріспе", label: "Негізгі батырма мәтіні", kind: "text", defaultValue: "Бірлестікке мүше болу", maxLength: 80 },
+  { key: "home.hero.intro", section: "Басты бет · кіріспе", label: "Кіріспе мәтін", kind: "textarea", defaultValue: "Қазақстанның математика мұғалімдері, оқытушылары мен ғалымдары осында бас қосады. Әріптестермен танысыңыз, тәжірибе алмасыңыз, ортақ жобаларға қатысыңыз.", maxLength: 600 },
+  { key: "home.hero.primaryLabel", section: "Басты бет · кіріспе", label: "Негізгі батырма мәтіні", kind: "text", defaultValue: "Бірлестікке қосылу", maxLength: 80 },
   { key: "home.hero.primaryDestination", section: "Басты бет · кіріспе", label: "Негізгі батырма сілтемесі", kind: "destination", defaultValue: "/membership", maxLength: 500 },
-  { key: "home.hero.secondaryLabel", section: "Басты бет · кіріспе", label: "Қосымша батырма мәтіні", kind: "text", defaultValue: "Бірлестік туралы", maxLength: 80 },
-  { key: "home.hero.secondaryDestination", section: "Басты бет · кіріспе", label: "Қосымша батырма сілтемесі", kind: "destination", defaultValue: "/about", maxLength: 500 },
+  { key: "home.hero.secondaryLabel", section: "Басты бет · кіріспе", label: "Қосымша батырма мәтіні", kind: "text", defaultValue: "Іс-шаралар", maxLength: 80 },
+  { key: "home.hero.secondaryDestination", section: "Басты бет · кіріспе", label: "Қосымша батырма сілтемесі", kind: "destination", defaultValue: "/#events", maxLength: 500 },
   { key: "home.about.heading", section: "Басты бет · Бірлестік туралы", label: "Бөлім тақырыбы", kind: "textarea", defaultValue: "Бірлестік не істейді?", maxLength: 220 },
   { key: "home.about.intro", section: "Басты бет · Бірлестік туралы", label: "Бөлім мәтіні", kind: "textarea", defaultValue: "Мүшелер тәжірибе алмасады, ал өңірлік филиалдар жергілікті кездесулер мен жобаларды ұйымдастырады.", maxLength: 700 },
   { key: "home.structure.heading", section: "Басты бет · Құрылым", label: "Бөлім тақырыбы", kind: "textarea", defaultValue: "Бірлестікті кім басқарады?", maxLength: 180 },
   { key: "home.structure.intro", section: "Басты бет · Құрылым", label: "Бөлім мәтіні", kind: "textarea", defaultValue: "Президент пен вице-президенттер бірлестік жұмысын басқарады. Департаменттер кәсіби бағыттарға, ал филиалдар өз өңіріндегі жұмысқа жауап береді.", maxLength: 700 },
   { key: "home.structure.ctaLabel", section: "Басты бет · Құрылым", label: "Батырма мәтіні", kind: "text", defaultValue: "Ұйымдық құрылымды көру", maxLength: 80 },
   { key: "home.structure.ctaDestination", section: "Басты бет · Құрылым", label: "Батырма сілтемесі", kind: "destination", defaultValue: "/structure", maxLength: 500 },
-  { key: "home.projects.heading", section: "Басты бет · Жобалар", label: "Бөлім тақырыбы", kind: "text", defaultValue: "Кездесулер мен материалдар", maxLength: 180 },
-  { key: "home.projects.ctaLabel", section: "Басты бет · Жобалар", label: "Батырма мәтіні", kind: "text", defaultValue: "Барлық жобалар", maxLength: 80 },
+  { key: "home.projects.heading", section: "Басты бет · Жобалар", label: "Бөлім тақырыбы", kind: "text", defaultValue: "Жобалар мен бастамалар", maxLength: 180 },
+  { key: "home.projects.ctaLabel", section: "Басты бет · Жобалар", label: "Батырма мәтіні", kind: "text", defaultValue: "Барлық жоба", maxLength: 80 },
   { key: "home.projects.ctaDestination", section: "Басты бет · Жобалар", label: "Батырма сілтемесі", kind: "destination", defaultValue: "/projects", maxLength: 500 },
-  { key: "home.membership.heading", section: "Басты бет · Мүшелік", label: "Бөлім тақырыбы", kind: "textarea", defaultValue: "Бірлестікке қалай қосыламын?", maxLength: 220 },
-  { key: "home.membership.intro", section: "Басты бет · Мүшелік", label: "Бөлім мәтіні", kind: "textarea", defaultValue: "Өтінішті онлайн жіберіңіз. Ол сіздің өңіріңіздегі филиалға автоматты түрде бағытталады.", maxLength: 600 },
-  { key: "home.membership.ctaLabel", section: "Басты бет · Мүшелік", label: "Батырма мәтіні", kind: "text", defaultValue: "Өтініш беру", maxLength: 80 },
+  { key: "home.membership.heading", section: "Басты бет · Мүшелік", label: "Бөлім тақырыбы", kind: "textarea", defaultValue: "Математиктер қауымдастығына қосылыңыз", maxLength: 220 },
+  { key: "home.membership.intro", section: "Басты бет · Мүшелік", label: "Бөлім мәтіні", kind: "textarea", defaultValue: "Өз өңіріңіздегі әріптестермен танысып, бірлестіктің жұмысына қатысыңыз.", maxLength: 600 },
+  { key: "home.membership.ctaLabel", section: "Басты бет · Мүшелік", label: "Батырма мәтіні", kind: "text", defaultValue: "Мүше болу", maxLength: 80 },
   { key: "home.membership.ctaDestination", section: "Басты бет · Мүшелік", label: "Батырма сілтемесі", kind: "destination", defaultValue: "/membership", maxLength: 500 },
   { key: "page.about.lead", section: "Ашық беттер", label: "«Бірлестік туралы» кіріспесі", kind: "textarea", defaultValue: "Бірлестікке Қазақстанның әр өңірінен математика мамандары қатысады.", maxLength: 700 },
   { key: "page.structure.lead", section: "Ашық беттер", label: "«Құрылым» кіріспесі", kind: "textarea", defaultValue: "Мұнда басшылардың міндеттерін көріп, өз өңіріңіздің филиалын таба аласыз.", maxLength: 700 },
@@ -81,7 +81,9 @@ export function validatePublicContentValue(key: string, rawValue: unknown) {
 
 // Keep previously saved copy for compatibility; show editors only fields still rendered.
 export const visiblePublicContentDefinitions = publicContentDefinitions.filter(({ key }) =>
-  !key.startsWith("home.") || ["home.hero.intro", "home.hero.primaryLabel", "home.hero.primaryDestination"].includes(key)
+  !key.startsWith("home.") ||
+  key.startsWith("home.projects.") || key.startsWith("home.membership.") ||
+  (key.startsWith("home.hero.") && key !== "home.hero.headline")
 );
 
 export const publicContentSeedRows = publicContentDefinitions.map((definition) => ({
@@ -108,6 +110,21 @@ const previousPublicCopy: Partial<Record<PublicContentKey, string>> = {
   "footer.description": "Қазақстан математиктерін біріктіретін заманауи институционалдық кеңістік."
 };
 
+const previousGatewayCopy: Partial<Record<PublicContentKey, string>> = {
+  "home.hero.intro": "Бірлестік Қазақстанның математика мұғалімдерін, оқытушыларын, ғалымдары мен әдіскерлерін біріктіреді.",
+  "home.hero.primaryLabel": "Бірлестікке мүше болу",
+  "home.hero.secondaryLabel": "Бірлестік туралы",
+  "home.hero.secondaryDestination": "/about",
+  "home.projects.heading": "Кездесулер мен материалдар",
+  "home.projects.ctaLabel": "Барлық жобалар",
+  "home.membership.heading": "Бірлестікке қалай қосыламын?",
+  "home.membership.intro": "Өтінішті онлайн жіберіңіз. Ол сіздің өңіріңіздегі филиалға автоматты түрде бағытталады.",
+  "home.membership.ctaLabel": "Өтініш беру"
+};
+
 export function displayedContentValue(key: PublicContentKey, row: { value: string; updatedBy: string | null }) {
-  return !row.updatedBy && previousPublicCopy[key] === row.value ? definitionByKey.get(key)!.defaultValue : row.value;
+  if (row.updatedBy) return row.value;
+  return previousPublicCopy[key] === row.value || previousGatewayCopy[key] === row.value
+    ? definitionByKey.get(key)!.defaultValue
+    : row.value;
 }
