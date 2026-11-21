@@ -4,7 +4,9 @@ import { runtimeEnv } from "./runtime-env";
 
 const encoder = new TextEncoder();
 export const PASSWORD_ITERATIONS = 210_000;
-const SESSION_TTL_SECONDS = 60 * 60 * 12;
+export const SESSION_DURATION_DAYS = 90;
+const SESSION_TTL_SECONDS = SESSION_DURATION_DAYS * 24 * 60 * 60;
+const OLD_SESSION_TTL_SECONDS = 12 * 60 * 60;
 
 function bytesToBase64Url(bytes: Uint8Array) {
   let binary = "";
@@ -82,34 +84,52 @@ export interface SessionPayload {
   sessionId: string;
   issuedAt: number;
   expiresAt: number;
+  credentialTag?: string;
 }
 
-export async function createSessionToken(userId: string) {
-  const issuedAt = Math.floor(Date.now() / 1000);
+export function sessionCredentialTag(passwordHash: string) {
+  return sign(`session-credential:${passwordHash}`);
+}
+
+export async function createSessionToken(userId: string, passwordHash: string, previous?: SessionPayload) {
+  const issuedAt = previous?.issuedAt ?? Math.floor(Date.now() / 1000);
   const payload: SessionPayload = {
     userId,
-    sessionId: crypto.randomUUID(),
+    sessionId: previous?.sessionId ?? crypto.randomUUID(),
     issuedAt,
     expiresAt: issuedAt + SESSION_TTL_SECONDS,
+    credentialTag: await sessionCredentialTag(passwordHash),
   };
-  const encoded = bytesToBase64Url(encoder.encode(JSON.stringify(payload)));
-  return `${encoded}.${await sign(encoded)}`;
+  const message = `v2.${bytesToBase64Url(encoder.encode(JSON.stringify(payload)))}`;
+  return `${message}.${await sign(message)}`;
 }
 
 export async function verifySessionToken(token: string): Promise<SessionPayload | null> {
-  const [encoded, signature] = token.split(".");
-  if (!encoded || !signature || (await sign(encoded)) !== signature) return null;
+  const current = token.startsWith("v2.");
+  const parts = (current ? token.slice(3) : token).split(".");
+  const [encoded, signature] = parts;
+  if (parts.length !== 2 || !encoded || !signature || (await sign(current ? `v2.${encoded}` : encoded)) !== signature) return null;
   try {
     const payload = JSON.parse(new TextDecoder().decode(base64UrlToBytes(encoded))) as SessionPayload;
-    if (!payload.userId || !payload.sessionId || payload.expiresAt <= Math.floor(Date.now() / 1000)) return null;
+    const now = Math.floor(Date.now() / 1000);
+    const lifetime = current ? SESSION_TTL_SECONDS : OLD_SESSION_TTL_SECONDS;
+    if (!payload.userId || !payload.sessionId || !Number.isSafeInteger(payload.issuedAt) || !Number.isSafeInteger(payload.expiresAt)) return null;
+    if (payload.issuedAt > now || payload.expiresAt <= now || payload.expiresAt - payload.issuedAt !== lifetime) return null;
+    if (current !== (typeof payload.credentialTag === "string")) return null;
     return payload;
   } catch {
     return null;
   }
 }
 
-export function sessionCookie(token: string, secure = true) {
-  return `phase1_session=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${SESSION_TTL_SECONDS}${secure ? "; Secure" : ""}`;
+export function sessionCookie(token: string, secure = true, maxAge = SESSION_TTL_SECONDS) {
+  return `phase1_session=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${secure ? "; Secure" : ""}`;
+}
+
+export async function upgradeSessionCookie(previous: SessionPayload, passwordHash: string, secure: boolean) {
+  const token = await createSessionToken(previous.userId, passwordHash, previous);
+  const maxAge = previous.issuedAt + SESSION_TTL_SECONDS - Math.floor(Date.now() / 1000);
+  return sessionCookie(token, secure, maxAge);
 }
 
 export function clearSessionCookie(secure = true) {

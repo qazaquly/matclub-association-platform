@@ -34,7 +34,7 @@ export async function POST(request: Request) {
     }
 
     stage = "session_signing";
-    const token = await createSessionToken(user.id);
+    const token = await createSessionToken(user.id, user.passwordHash);
     stage = "last_login_update";
     await database.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
     stage = "login_audit";

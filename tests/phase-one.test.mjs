@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { createHash, randomUUID } from "node:crypto";
+import { createHash, createHmac, randomUUID } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
@@ -782,6 +782,66 @@ async function login(email, password = "PhaseOneDemo2026!") {
 
 const authHeaders = (cookie) => ({ cookie });
 
+test("sign-in lasts 90 days from authentication and sign-out closes only that session", async () => {
+  const email = `long-session-${randomUUID()}@example.test`;
+  const password = "MemberLogin2026!";
+  const registered = await registerAccount(email, password);
+  const seconds = 90 * 24 * 60 * 60;
+  const registrationHeader = registered.response.headers.get("set-cookie");
+  assert.equal(registered.response.status, 201);
+  assert.match(registrationHeader, new RegExp(`Max-Age=${seconds}(?:;|$)`));
+  const response = await appRequest("/api/auth/login", {
+    method: "POST",
+    headers: { origin: "http://localhost", "content-type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ email, password }),
+  });
+  const cookieHeader = response.headers.get("set-cookie");
+  assert.match(cookieHeader, new RegExp(`Max-Age=${seconds}(?:;|$)`));
+  assert.match(cookieHeader, /HttpOnly/);
+  assert.match(cookieHeader, /SameSite=Lax/);
+  const cookie = cookieHeader.split(";")[0];
+  const payload = JSON.parse(Buffer.from(cookie.split(".")[1], "base64url").toString());
+  assert.equal(payload.expiresAt - payload.issuedAt, seconds);
+  assert.match((await appRequest("/login", { headers: { cookie } })).headers.get("location") ?? "", /verify-email/);
+  const logout = await appRequest("/api/auth/logout", { method: "POST", headers: { cookie, origin: "http://localhost" } });
+  assert.match(logout.headers.get("set-cookie") ?? "", /Max-Age=0/);
+  assert.equal((await appRequest("/login", { headers: { cookie } })).status, 200);
+  assert.match((await appRequest("/login", { headers: { cookie: registered.cookie } })).headers.get("location") ?? "", /verify-email/);
+});
+
+test("a still-active 12-hour sign-in upgrades once from its original sign-in date", async () => {
+  const account = await registerAccount(`session-upgrade-${randomUUID()}@example.test`, "MemberLogin2026!");
+  assert.equal(account.response.status, 201);
+  const { userId } = JSON.parse(Buffer.from(account.cookie.split(".")[1], "base64url").toString());
+  const sessionId = randomUUID();
+  const oldDuration = 12 * 60 * 60;
+  const now = Math.floor(Date.now() / 1000);
+  function oldTestCookie(issuedAt) {
+    const encoded = Buffer.from(JSON.stringify({ userId, sessionId, issuedAt, expiresAt: issuedAt + oldDuration })).toString("base64url");
+    return `phase1_session=${encoded}.${createHmac("sha256", AUTH_SECRET).update(encoded).digest("base64url")}`;
+  }
+  const issuedAt = now - 2 * 60 * 60;
+  const previousCookie = oldTestCookie(issuedAt);
+  const visit = await appRequest("/verify-email", { headers: { cookie: previousCookie } });
+  assert.equal(visit.status, 200);
+  assert.match(visit.headers.get("cache-control") ?? "", /no-store/);
+  const header = visit.headers.get("set-cookie") ?? "";
+  assert.match(header, /^phase1_session=v2\./);
+  const renewed = header.split(";")[0];
+  const payload = JSON.parse(Buffer.from(renewed.split(".")[1], "base64url").toString());
+  assert.equal(payload.sessionId, sessionId);
+  assert.equal(payload.issuedAt, issuedAt);
+  assert.equal(payload.expiresAt, issuedAt + 90 * 24 * 60 * 60);
+  const remaining = Number(header.match(/Max-Age=(\d+)/)?.[1]);
+  assert.ok(Math.abs(payload.expiresAt - Math.floor(Date.now() / 1000) - remaining) < 5);
+  assert.equal((await appRequest("/verify-email", { headers: { cookie: renewed } })).headers.get("set-cookie"), null);
+  await appRequest("/api/auth/logout", { method: "POST", headers: { cookie: renewed, origin: "http://localhost" } });
+  assert.equal((await appRequest("/login", { headers: { cookie: previousCookie } })).status, 200);
+  const expired = await appRequest("/login", { headers: { cookie: oldTestCookie(now - oldDuration) } });
+  assert.equal(expired.status, 200);
+  assert.equal(expired.headers.get("set-cookie"), null);
+});
+
 async function registerAccount(email, password, ip = `register-${randomUUID()}`) {
   const response = await appRequest("/api/auth/register", {
     method: "POST",
@@ -1024,6 +1084,7 @@ test("registration, email correction, verification, recovery, join routing, and 
     await client.query("INSERT INTO password_reset_tokens (id, user_id, token_hash, expires_at, created_at) VALUES ($1, $2, $3, NOW() + INTERVAL '1 hour', NOW())", [randomUUID(), userId, resetHash]);
     const reset = await appRequest("/api/auth/reset-password", { method: "POST", headers: { origin: "http://localhost", "content-type": "application/json", accept: "application/json" }, body: JSON.stringify({ token: resetRaw, password: newPassword, passwordConfirmation: newPassword }) });
     assert.equal(reset.status, 200, await reset.clone().text());
+    assert.equal((await appRequest("/login", { headers: { cookie: registered.cookie } })).status, 200);
     const resetReuse = await appRequest("/api/auth/reset-password", { method: "POST", headers: { origin: "http://localhost", "content-type": "application/json", accept: "application/json" }, body: JSON.stringify({ token: resetRaw, password: newPassword, passwordConfirmation: newPassword }) });
     assert.equal(resetReuse.status, 422);
     const oldLogin = await appRequest("/api/auth/login", { method: "POST", headers: { origin: "http://localhost", "content-type": "application/x-www-form-urlencoded", "cf-connecting-ip": `${ip}-old-login` }, body: new URLSearchParams({ email: correctedEmail, password: oldPassword }) });
