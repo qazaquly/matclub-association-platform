@@ -2,6 +2,21 @@ import { ensureDatabase } from "./bootstrap";
 import { getDb } from "./index";
 import type { DynamicContentKind } from "@/lib/dynamic-content";
 
+const publishedContent = { status: "PUBLISHED", archivedAt: null, publishedAt: { not: null } };
+
+export async function getHomeCatalog() {
+  await ensureDatabase();
+  const db = getDb();
+  const card = { slug: true, title: true, coverMediaId: true, publishedAt: true };
+  const [news, projects, branchCount, projectCount] = await Promise.all([
+    db.news.findMany({ where: publishedContent, select: { ...card, lead: true }, orderBy: [{ publishedAt: "desc" }, { id: "asc" }], take: 3 }),
+    db.publicProject.findMany({ where: publishedContent, select: { ...card, summary: true }, orderBy: [{ displayOrder: "asc" }, { publishedAt: "desc" }, { id: "asc" }], take: 2 }),
+    db.branch.count({ where: { archivedAt: null } }),
+    db.publicProject.count({ where: publishedContent }),
+  ]);
+  return { news, projects, branchCount, projectCount };
+}
+
 export async function listAdminDynamicContent(kind: DynamicContentKind) {
   await ensureDatabase();
   const database = getDb();
@@ -23,7 +38,7 @@ export async function getAdminDynamicContent(kind: DynamicContentKind, id: strin
 export async function listPublishedNews() {
   await ensureDatabase();
   return getDb().news.findMany({
-    where: { status: "PUBLISHED", archivedAt: null, publishedAt: { not: null } },
+    where: publishedContent,
     include: { coverMedia: true }, orderBy: { publishedAt: "desc" },
   });
 }
@@ -44,7 +59,7 @@ export async function getPublishedNews(slug: string) {
 export async function listPublishedPublications() {
   await ensureDatabase();
   return getDb().publication.findMany({
-    where: { status: "PUBLISHED", archivedAt: null, publishedAt: { not: null } }, include: { coverMedia: true },
+    where: publishedContent, include: { coverMedia: true },
     orderBy: [{ publicationDate: "desc" }, { publishedAt: "desc" }],
   });
 }
@@ -62,7 +77,7 @@ export async function listActivePartners() {
 export async function listPublishedProjects() {
   await ensureDatabase();
   return getDb().publicProject.findMany({
-    where: { status: "PUBLISHED", archivedAt: null, publishedAt: { not: null } }, include: { coverMedia: true },
+    where: publishedContent, include: { coverMedia: true },
     orderBy: [{ displayOrder: "asc" }, { publishedAt: "desc" }],
   });
 }

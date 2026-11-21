@@ -13,7 +13,7 @@ export async function POST(request: Request) {
     if (!canManagePublicContent(actor)) return new Response("Forbidden", { status: 403 });
 
     const form = await request.formData();
-    const submitted = visiblePublicContentDefinitions.filter(definition => !definition.key.startsWith("contact.") || form.has(definition.key)).map((definition) => ({
+    const submitted = visiblePublicContentDefinitions.filter(definition => form.has(definition.key)).map((definition) => ({
       definition,
       value: validatePublicContentValue(definition.key, form.get(definition.key)),
     }));
