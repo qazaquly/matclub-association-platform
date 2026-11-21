@@ -2,6 +2,7 @@
 import { handleImageOptimization, DEFAULT_DEVICE_SIZES, DEFAULT_IMAGE_SIZES } from "vinext/server/image-optimization";
 import handler from "vinext/server/app-router-entry";
 import { withRequestDatabase } from "@/db";
+import { renewPreviousSession } from "@/lib/auth";
 import { runArchiveRetention } from "@/lib/archive-retention";
 import { configureRuntimeEnv } from "@/lib/runtime-env";
 
@@ -62,6 +63,14 @@ const worker = {
 
       const response = await handler.fetch(request, env, ctx);
       const headers = new Headers(response.headers);
+      if (request.method === "GET" && response.ok && headers.get("Content-Type")?.includes("text/html") && !headers.has("Set-Cookie")) {
+        // A failed upgrade can retry on the next page visit.
+        const renewedCookie = await renewPreviousSession(request).catch(() => null);
+        if (renewedCookie) {
+          headers.set("Set-Cookie", renewedCookie);
+          headers.set("Cache-Control", "private, no-store");
+        }
+      }
       headers.set("X-Content-Type-Options", "nosniff");
       headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
       headers.set("X-Frame-Options", "DENY");

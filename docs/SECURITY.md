@@ -3,7 +3,8 @@
 ## Authentication
 
 - Passwords use PBKDF2-HMAC-SHA256 with a random 128-bit salt and 210,000 iterations.
-- HMAC-signed sessions expire after 12 hours and use HttpOnly, SameSite=Lax cookies; HTTPS adds Secure.
+- Signed sessions expire 90 days after sign-in. The browser cookie has the same lifetime and uses HttpOnly, SameSite=Lax, and Secure on HTTPS.
+- Signing out closes that session. Changing a password invalidates sessions tied to the old password. An active 12-hour session upgrades on the next page visit, keeping the original sign-in time.
 - Production refuses to sign sessions without `AUTH_SECRET`.
 - Login attempts are rate-limited by normalized email and client IP through an atomic PostgreSQL upsert.
 - Membership validation failures do not consume the valid-submission limit. Unauthenticated draft-creation floods retain a separate higher-volume abuse limit, while fully valid submissions use per-IP and per-user limits.

@@ -59,7 +59,7 @@ export async function POST(request: Request) {
     } catch {
       delivery = "failed";
     }
-    const token = await createSessionToken(userId);
+    const token = await createSessionToken(userId, passwordHash);
     return Response.json({ registered: true, delivery, url: `/verify-email?state=${delivery}` }, {
       status: 201,
       headers: { "Set-Cookie": sessionCookie(token, new URL(request.url).protocol === "https:") },
